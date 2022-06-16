@@ -39,9 +39,17 @@ SUBSYSTEM_DEF(mapping)
 	// Load all Z level templates
 	preloadTemplates()
 
-	// Load the station
-	loadStation()
+	//loadHomespace()
+	loadBlankStation()
 
+	GLOB.space_manager.do_transition_setup()
+
+	// OLD IS BELOW LINE
+
+	// Load the station
+	//loadStation()
+
+	/*
 	// Load lavaland
 	loadLavaland()
 
@@ -73,6 +81,7 @@ SUBSYSTEM_DEF(mapping)
 		log_startup_progress("Successfully populated lavaland in [stop_watch(lavaland_setup_timer)]s.")
 	else
 		log_startup_progress("Skipping lavaland ruins...")
+	*/
 
 	// Now we make a list of areas for teleport locs
 	teleportlocs = list()
@@ -112,6 +121,14 @@ SUBSYSTEM_DEF(mapping)
 		world.name = station_name()
 
 	return ..()
+
+// Loads in lavaland
+/datum/controller/subsystem/mapping/proc/loadBlankStation()
+	var/watch = start_watch()
+	log_startup_progress("Loading Homespace...")
+	GLOB.space_manager.add_new_zlevel(MAIN_STATION, linkage = CROSSLINKED, traits = list(STATION_LEVEL, STATION_CONTACT, REACHABLE, AI_OK))
+	//GLOB.maploader.load_map(file("_maps/map_files/generic/space.dmm"), z_offset = lavaland_z_level)
+	log_startup_progress("Loaded Homespace in [stop_watch(watch)]s")
 
 // Do not confuse with seedRuins()
 /datum/controller/subsystem/mapping/proc/handleRuins()

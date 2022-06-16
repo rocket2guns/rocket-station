@@ -33,6 +33,12 @@
 		..()
 		update_ammo_types()
 
+/obj/item/gun/energy/examine(mob/user)
+	. = ..()
+	if(cell)
+		. += "<span class='notice'>It is [round(cell.percent())]% charged.</span>"
+
+
 /obj/item/gun/energy/detailed_examine()
 	return "This is an energy weapon. Most energy weapons can fire through windows harmlessly. To recharge this weapon, use a weapon recharger."
 
