@@ -31,9 +31,7 @@
 			else
 				aspell.name = initial(aspell.name)
 				aspell.spell_level++
-				aspell.charge_max = round(initial(aspell.charge_max) - aspell.spell_level * (initial(aspell.charge_max) - aspell.cooldown_min) / aspell.level_max)
-				if(aspell.charge_max < aspell.charge_counter)
-					aspell.charge_counter = aspell.charge_max
+				aspell.cooldown_handler.recharge_duration = round(aspell.base_cooldown - aspell.spell_level * (aspell.base_cooldown - aspell.cooldown_min) / aspell.level_max)
 				switch(aspell.spell_level)
 					if(1)
 						to_chat(user, "<span class='notice'>You have improved [aspell.name] into Efficient [aspell.name].</span>")
@@ -89,8 +87,7 @@
 		S = new spell_type()
 	var/dat =""
 	dat += "<b>[name]</b>"
-	if(S.charge_type == "recharge")
-		dat += " Cooldown:[S.charge_max/10]"
+	dat += " Cooldown:[S.base_cooldown/10]"
 	dat += " Cost:[cost]<br>"
 	dat += "<i>[S.desc][desc]</i><br>"
 	dat += "[S.clothes_req?"Needs wizard garb":"Can be cast without wizard garb"]<br>"
@@ -187,16 +184,9 @@
 	category = "Defensive"
 	cost = 1
 
-/datum/spellbook_entry/greaterforcewall
-	name = "Greater Force Wall"
-	spell_type = /obj/effect/proc_holder/spell/forcewall/greater
-	log_name = "GFW"
-	category = "Defensive"
-	cost = 1
-
 /datum/spellbook_entry/repulse
 	name = "Repulse"
-	spell_type = /obj/effect/proc_holder/spell/aoe_turf/repulse
+	spell_type = /obj/effect/proc_holder/spell/aoe/repulse
 	log_name = "RP"
 	category = "Defensive"
 	cost = 1
@@ -223,7 +213,7 @@
 
 /datum/spellbook_entry/timestop
 	name = "Time Stop"
-	spell_type = /obj/effect/proc_holder/spell/aoe_turf/conjure/timestop
+	spell_type = /obj/effect/proc_holder/spell/aoe/conjure/timestop
 	log_name = "TS"
 	category = "Defensive"
 
@@ -249,7 +239,7 @@
 //Mobility
 /datum/spellbook_entry/knock
 	name = "Knock"
-	spell_type = /obj/effect/proc_holder/spell/aoe_turf/knock
+	spell_type = /obj/effect/proc_holder/spell/aoe/knock
 	log_name = "KN"
 	category = "Mobility"
 	cost = 1
@@ -268,7 +258,7 @@
 
 /datum/spellbook_entry/greaterknock
 	name = "Greater Knock"
-	spell_type = /obj/effect/proc_holder/spell/aoe_turf/knock/greater
+	spell_type = /obj/effect/proc_holder/spell/aoe/knock/greater
 	log_name = "GK"
 	category = "Mobility"
 	refundable = 0 //global effect on cast
@@ -434,7 +424,7 @@
 /datum/spellbook_entry/item/soulstones/Buy(mob/living/carbon/human/user, obj/item/spellbook/book)
 	. = ..()
 	if(.)
-		user.mind.AddSpell(new /obj/effect/proc_holder/spell/aoe_turf/conjure/construct(null))
+		user.mind.AddSpell(new /obj/effect/proc_holder/spell/aoe/conjure/construct(null))
 	return .
 
 /datum/spellbook_entry/item/wands
@@ -497,6 +487,14 @@
 	desc = "A hammer that creates an intensely powerful field of gravity where it strikes, pulling everything nearby to the point of impact."
 	item_path = /obj/item/twohanded/singularityhammer
 	log_name = "SI"
+	category = "Weapons and Armors"
+
+/datum/spellbook_entry/item/cursed_katana
+	name = "Cursed Katana"
+	desc = "A cursed artefact, used to seal a horrible being inside the katana, which has now reformed. Can be used to make multiple powerful combos, examine it to see them. Can not be dropped. On death, you will dust."
+	item_path = /obj/item/organ/internal/cyberimp/arm/katana
+	cost = 1
+	log_name = "CK"
 	category = "Weapons and Armors"
 
 /datum/spellbook_entry/item/spell_blade
@@ -650,7 +648,11 @@
 	for(var/path in spells_path)
 		var/obj/effect/proc_holder/spell/S = new path()
 		LearnSpell(user, book, S)
+	OnBuy(user, book)
 	return TRUE
+
+/datum/spellbook_entry/loadout/proc/OnBuy(mob/living/carbon/human/user, obj/item/spellbook/book)
+	return
 
 /obj/item/spellbook
 	name = "spell book"
@@ -867,7 +869,7 @@
 		return 1
 
 	var/datum/spellbook_entry/E = null
-	if(loc == H || (in_range(src, H) && istype(loc, /turf)))
+	if(loc == H || (in_range(src, H) && isturf(loc)))
 		H.set_machine(src)
 		if(href_list["buy"])
 			E = entries[text2num(href_list["buy"])]
@@ -902,7 +904,7 @@
 /obj/item/spellbook/oneuse
 	var/spell = /obj/effect/proc_holder/spell/projectile/magic_missile //just a placeholder to avoid runtimes if someone spawned the generic
 	var/spellname = "sandbox"
-	var/used = 0
+	var/used = FALSE
 	name = "spellbook of "
 	uses = 1
 	desc = "This template spellbook was never meant for the eyes of man..."
@@ -937,7 +939,7 @@
 	user.visible_message("<span class='warning'>[src] glows in a black light!</span>")
 
 /obj/item/spellbook/oneuse/proc/onlearned(mob/user)
-	used = 1
+	used = TRUE
 	user.visible_message("<span class='caution'>[src] glows dark for a second!</span>")
 
 /obj/item/spellbook/oneuse/attackby()
@@ -1024,7 +1026,7 @@
 	user.drop_item()
 
 /obj/item/spellbook/oneuse/knock
-	spell = /obj/effect/proc_holder/spell/aoe_turf/knock
+	spell = /obj/effect/proc_holder/spell/aoe/knock
 	spellname = "knock"
 	icon_state = "bookknock"
 	desc = "This book is hard to hold closed properly."
@@ -1041,7 +1043,7 @@
 	desc = "This book is more horse than your mind has room for."
 
 /obj/item/spellbook/oneuse/horsemask/recoil(mob/living/carbon/user as mob)
-	if(istype(user, /mob/living/carbon/human))
+	if(ishuman(user))
 		to_chat(user, "<font size='15' color='red'><b>HOR-SIE HAS RISEN</b></font>")
 		var/obj/item/clothing/mask/horsehead/magichead = new /obj/item/clothing/mask/horsehead
 		magichead.flags |= NODROP | DROPDEL	//curses!

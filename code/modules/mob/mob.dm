@@ -2,13 +2,15 @@
 	GLOB.mob_list -= src
 	GLOB.dead_mob_list -= src
 	GLOB.alive_mob_list -= src
-	focus = null
+	input_focus = null
 	QDEL_NULL(hud_used)
 	if(mind && mind.current == src)
 		spellremove(src)
 	mobspellremove(src)
 	QDEL_LIST(viruses)
 	QDEL_LIST(actions)
+	for(var/alert in alerts)
+		clear_alert(alert)
 	ghostize()
 	QDEL_LIST_ASSOC_VAL(tkgrabbed_objects)
 	for(var/I in tkgrabbed_objects)
@@ -31,7 +33,8 @@
 		GLOB.dead_mob_list += src
 	else
 		GLOB.alive_mob_list += src
-	set_focus(src)
+	input_focus = src
+	reset_perspective(src)
 	prepare_huds()
 	update_runechat_msg_location()
 	. = ..()
@@ -106,6 +109,19 @@
 // blind_message (optional) is what blind people will hear e.g. "You hear something!"
 
 /mob/visible_message(message, self_message, blind_message)
+	if(!isturf(loc)) // mobs inside objects (such as lockers) shouldn't have their actions visible to those outside the object
+		for(var/mob/M in get_mobs_in_view(3, src))
+			if(M.see_invisible < invisibility)
+				continue //can't view the invisible
+			var/msg = message
+			if(self_message && M == src)
+				msg = self_message
+			if(M.loc != loc)
+				if(!blind_message) // for some reason VISIBLE action has blind_message param so if we are not in the same object but next to it, lets show it
+					continue
+				msg = blind_message
+			M.show_message(msg, EMOTE_VISIBLE, blind_message, EMOTE_AUDIBLE)
+		return
 	for(var/mob/M in get_mobs_in_view(7, src))
 		if(M.see_invisible < invisibility)
 			continue //can't view the invisible
@@ -142,11 +158,11 @@
 	var/omsg = replacetext(message, "<B>[src]</B> ", "")
 	var/list/listening_obj = new
 	for(var/atom/movable/A in view(range, src))
-		if(istype(A, /mob))
+		if(ismob(A))
 			var/mob/M = A
 			for(var/obj/O in M.contents)
 				listening_obj |= O
-		else if(istype(A, /obj))
+		else if(isobj(A))
 			var/obj/O = A
 			listening_obj |= O
 	for(var/obj/O in listening_obj)
@@ -232,7 +248,7 @@
 		equip_to_slot_or_del(W, slot, initial)
 	else
 		//Mob can't equip it.  Put it their backpack or toss it on the floor
-		if(istype(back, /obj/item/storage))
+		if(isstorage(back))
 			var/obj/item/storage/S = back
 			//Now, B represents a container we can insert W into.
 			S.handle_item_insertion(W,1)
@@ -271,7 +287,7 @@ GLOBAL_LIST_INIT(slot_equipment_priority, list( \
 	if(!istype(W)) return 0
 
 	for(var/slot in GLOB.slot_equipment_priority)
-		if(istype(W,/obj/item/storage/) && slot == slot_head) // Storage items should be put on the belt before the head
+		if(isstorage(W) && slot == slot_head) // Storage items should be put on the belt before the head
 			continue
 		if(equip_to_slot_if_possible(W, slot, FALSE, TRUE)) //del_on_fail = 0; disable_warning = 0
 			return 1
@@ -448,7 +464,7 @@ GLOBAL_LIST_INIT(slot_equipment_priority, list( \
 					if(!disable_warning)
 						to_chat(usr, "The [name] is too big to attach.")
 					return 0
-				if( istype(src, /obj/item/pda) || istype(src, /obj/item/pen) || is_type_in_list(src, H.wear_suit.allowed) )
+				if( istype(src, /obj/item/pda) || is_pen(src) || is_type_in_list(src, H.wear_suit.allowed) )
 					if(H.s_store)
 						if(!(H.s_store.flags & NODROP))
 							return 2
@@ -594,33 +610,6 @@ GLOBAL_LIST_INIT(slot_equipment_priority, list( \
 	var/list/result = A.examine(src)
 	to_chat(src, result.Join("\n"))
 
-//same as above
-//note: ghosts can point, this is intended
-//visible_message will handle invisibility properly
-//overriden here and in /mob/dead/observer for different point span classes and sanity checks
-/mob/verb/pointed(atom/A as mob|obj|turf in view())
-	set name = "Point To"
-	set category = "Object"
-
-	if(next_move >= world.time)
-		return
-	if(!isturf(loc) || istype(A, /obj/effect/temp_visual/point) || istype(A, /obj/effect/hallucination))
-		return FALSE
-
-	var/tile = get_turf(A)
-	if(!tile)
-		return FALSE
-
-	changeNext_move(CLICK_CD_POINT)
-	var/obj/P = new /obj/effect/temp_visual/point(tile)
-	P.invisibility = invisibility
-	if(get_turf(src) != tile)
-		// Start off from the pointer and make it slide to the pointee
-		P.pixel_x = (x - A.x) * 32
-		P.pixel_y = (y - A.y) * 32
-		animate(P, 0.5 SECONDS, pixel_x = A.pixel_x, pixel_y = A.pixel_y, easing = QUAD_EASING)
-	return TRUE
-
 /mob/proc/ret_grab(obj/effect/list_container/mobl/L as obj, flag)
 	if((!( istype(l_hand, /obj/item/grab) ) && !( istype(r_hand, /obj/item/grab) )))
 		if(!( L ))
@@ -661,7 +650,7 @@ GLOBAL_LIST_INIT(slot_equipment_priority, list( \
 	set category = null
 	set src = usr
 
-	if(istype(loc,/obj/mecha)) return
+	if(ismecha(loc)) return
 
 	if(hand)
 		var/obj/item/W = l_hand
@@ -868,7 +857,7 @@ GLOBAL_LIST_INIT(slot_equipment_priority, list( \
 	set category = "OOC"
 	reset_perspective(null)
 	unset_machine()
-	if(istype(src, /mob/living))
+	if(isliving(src))
 		if(src:cameraFollow)
 			src:cameraFollow = null
 
@@ -923,7 +912,7 @@ GLOBAL_LIST_INIT(slot_equipment_priority, list( \
 	if(isliving(M))
 		var/mob/living/L = M
 		if(L.mob_size <= MOB_SIZE_SMALL)
-			return // Stops pAI drones and small mobs (borers, parrots, crabs) from stripping people. --DZD
+			return // Stops pAI drones and small mobs (parrots, crabs) from stripping people. --DZD
 	if(!M.can_strip)
 		return
 	if(usr == src)
@@ -969,7 +958,7 @@ GLOBAL_LIST_INIT(slot_equipment_priority, list( \
 	return gender
 
 /mob/proc/is_muzzled()
-	return 0
+	return FALSE
 
 /mob/Stat()
 	..()
@@ -985,7 +974,7 @@ GLOBAL_LIST_INIT(slot_equipment_priority, list( \
 	if(mob_spell_list && mob_spell_list.len)
 		for(var/obj/effect/proc_holder/spell/S in mob_spell_list)
 			add_spell_to_statpanel(S)
-	if(mind && istype(src, /mob/living) && mind.spell_list && mind.spell_list.len)
+	if(mind && isliving(src) && mind.spell_list && mind.spell_list.len)
 		for(var/obj/effect/proc_holder/spell/S in mind.spell_list)
 			add_spell_to_statpanel(S)
 
@@ -994,7 +983,8 @@ GLOBAL_LIST_INIT(slot_equipment_priority, list( \
 		if(statpanel("MC")) //looking at that panel
 			var/turf/T = get_turf(client.eye)
 			stat("Location:", COORD(T))
-			stat("CPU:", "[Master.formatcpu()]")
+			stat("CPU:", "[Master.formatcpu(world.cpu)]")
+			stat("Map CPU:", "[Master.formatcpu(world.map_cpu)]")
 			stat("Instances:", "[num2text(world.contents.len, 10)]")
 			GLOB.stat_entry()
 			stat("Server Time:", time_stamp())
@@ -1024,6 +1014,10 @@ GLOBAL_LIST_INIT(slot_equipment_priority, list( \
 	stat(null, "Server Uptime: [worldtime2text()]")
 	stat(null, "Round Time: [ROUND_TIME ? time2text(ROUND_TIME, "hh:mm:ss") : "N/A"]")
 	stat(null, "Station Time: [station_time_timestamp()]")
+	stat(null, "Time Dilation: [round(SStime_track.time_dilation_current,1)]% " + \
+				"AVG:([round(SStime_track.time_dilation_avg_fast,1)]%, " + \
+				"[round(SStime_track.time_dilation_avg,1)]%, " + \
+				"[round(SStime_track.time_dilation_avg_slow,1)]%)")
 
 // this function displays the shuttles ETA in the status panel if the shuttle has been called
 /mob/proc/show_stat_emergency_shuttle_eta()
@@ -1048,35 +1042,40 @@ GLOBAL_LIST_INIT(slot_equipment_priority, list( \
 			statpanel(listed_turf.name, null, statpanel_things)
 
 /mob/proc/add_spell_to_statpanel(obj/effect/proc_holder/spell/S)
-	switch(S.charge_type)
-		if("recharge")
-			statpanel(S.panel,"[S.charge_counter/10.0]/[S.charge_max/10]",S)
-		if("charges")
-			statpanel(S.panel,"[S.charge_counter]/[S.charge_max]",S)
-		if("holdervar")
-			statpanel(S.panel,"[S.holder_var_type] [S.holder_var_amount]",S)
+	statpanel(S.panel,"[S.cooldown_handler.statpanel_info()]", S)
 
 // facing verbs
 /mob/proc/canface()
-	if(!canmove)						return 0
-	if(client.moving)					return 0
-	if(world.time < client.move_delay)	return 0
-	if(stat==2)							return 0
-	if(anchored)						return 0
-	if(notransform)						return 0
-	if(restrained())					return 0
-	return 1
+	if(client.moving)
+		return FALSE
+	if(stat == DEAD)
+		return FALSE
+	if(anchored)
+		return FALSE
+	if(notransform)
+		return FALSE
+	if(restrained())
+		return FALSE
+	return TRUE
 
-/mob/proc/fall(forced)
+/mob/living/canface()
+	if(!(mobility_flags & MOBILITY_MOVE))
+		return FALSE
+	. = ..()
+
+/mob/proc/fall()
 	drop_l_hand()
 	drop_r_hand()
 
+/mob/living/fall()
+	..()
+	set_body_position(LYING_DOWN)
+
 /mob/proc/facedir(ndir)
 	if(!canface())
-		return 0
+		return FALSE
 	setDir(ndir)
-	client.move_delay += movement_delay()
-	return 1
+	return TRUE
 
 
 /mob/verb/eastface()
@@ -1110,7 +1109,7 @@ GLOBAL_LIST_INIT(slot_equipment_priority, list( \
 
 /mob/proc/add_to_respawnable_list()
 	GLOB.respawnable_list += src
-	RegisterSignal(src, COMSIG_PARENT_QDELETING, .proc/remove_from_respawnable_list)
+	RegisterSignal(src, COMSIG_PARENT_QDELETING, PROC_REF(remove_from_respawnable_list))
 
 /mob/proc/remove_from_respawnable_list()
 	GLOB.respawnable_list -= src
@@ -1189,7 +1188,7 @@ GLOBAL_LIST_INIT(slot_equipment_priority, list( \
 	if(stat==DEAD)
 		return
 	var/turf/location = loc
-	if(istype(location, /turf/simulated))
+	if(issimulatedturf(location))
 		if(green)
 			if(!no_text)
 				visible_message("<span class='warning'>[src] vomits up some green goo!</span>","<span class='warning'>You vomit up some green goo!</span>")
@@ -1533,3 +1532,10 @@ GLOBAL_LIST_INIT(holy_areas, typecacheof(list(
 	invisibility = INVISIBILITY_OBSERVER
 	alpha = 128
 	remove_from_all_data_huds()
+
+/mob/proc/set_stat(new_stat)
+	if(new_stat == stat)
+		return
+	. = stat
+	stat = new_stat
+	SEND_SIGNAL(src, COMSIG_MOB_STATCHANGE, new_stat, .)

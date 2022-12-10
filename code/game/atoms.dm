@@ -10,6 +10,9 @@
 	///For handling persistent filters
 	var/list/filter_data
 
+	/// pass_flags that we are. If any of this matches a pass_flag on a moving thing, by default, we let them through.
+	var/pass_flags_self = NONE
+
 	var/list/blood_DNA
 	var/blood_color
 	var/last_bumped = 0
@@ -38,8 +41,6 @@
 	//Detective Work, used for allowing a given atom to leave its fibers on stuff. Allowed by default
 	var/can_leave_fibers = TRUE
 
-	var/allow_spin = TRUE //Set this to 1 for a _target_ that is being thrown at; if an atom has this set to 1 then atoms thrown AT it will not spin; currently used for the singularity. -Fox
-
 	var/admin_spawned = FALSE	//was this spawned by an admin? used for stat tracking stuff.
 
 	var/initialized = FALSE
@@ -47,6 +48,8 @@
 	var/list/priority_overlays	//overlays that should remain on top and not normally removed when using cut_overlay functions, like c4.
 	var/list/remove_overlays // a very temporary list of overlays to remove
 	var/list/add_overlays // a very temporary list of overlays to add
+	///overlays managed by [update_overlays][/atom/proc/update_overlays] to prevent removing overlays that weren't added by the same proc. Single items are stored on their own, not in a list.
+	var/list/managed_overlays
 
 	var/list/atom_colours	 //used to store the different colors on an atom
 						//its inherent color, the colored paint applied on it, special color effect etc...
@@ -123,9 +126,7 @@
 		T.has_opaque_atom = TRUE // No need to recalculate it in this case, it's guranteed to be on afterwards anyways.
 
 	if(loc)
-		loc.InitializedOn(src) // Used for poolcontroller / pool to improve performance greatly. However it also open up path to other usage of observer pattern on turfs.
-
-	ComponentInitialize()
+		SEND_SIGNAL(loc, COMSIG_ATOM_INITIALIZED_ON, src) // Used for poolcontroller / pool to improve performance greatly. However it also open up path to other usage of observer pattern on turfs.
 
 	if(length(smoothing_groups))
 		sortTim(smoothing_groups) //In case it's not properly ordered, let's avoid duplicate entries with the same values.
@@ -140,13 +141,6 @@
 
 //called if Initialize returns INITIALIZE_HINT_LATELOAD
 /atom/proc/LateInitialize()
-	return
-
-// Put your AddComponent() calls here
-/atom/proc/ComponentInitialize()
-	return
-
-/atom/proc/InitializedOn(atom/A) // Proc for when something is initialized on a atom - Optional to call. Useful for observer pattern etc.
 	return
 
 /atom/proc/onCentcom()
@@ -190,6 +184,8 @@
 	invisibility = INVISIBILITY_MAXIMUM
 	LAZYCLEARLIST(overlays)
 	LAZYCLEARLIST(priority_overlays)
+
+	managed_overlays = null
 
 	QDEL_NULL(light)
 
@@ -248,7 +244,7 @@
 			reagents.conditional_update()
 		else if(istype(A, /atom/movable))
 			var/atom/movable/M = A
-			if(istype(M.loc, /mob/living))
+			if(isliving(M.loc))
 				var/mob/living/L = M.loc
 				L.unEquip(M)
 			M.forceMove(src)
@@ -393,6 +389,73 @@
 
 	SEND_SIGNAL(src, COMSIG_PARENT_EXAMINE, user, .)
 
+/**
+ * Updates the appearence of the icon
+ *
+ * Mostly delegates to update_name, update_desc, and update_icon
+ *
+ * Arguments:
+ * - updates: A set of bitflags dictating what should be updated. Defaults to [ALL]
+ */
+/atom/proc/update_appearance(updates=ALL)
+	SHOULD_NOT_SLEEP(TRUE)
+	SHOULD_CALL_PARENT(TRUE)
+
+	/// Signal sent should the appearance be updated. This is more broad if listening to a more specific signal doesn't cut it
+	updates &= ~SEND_SIGNAL(src, COMSIG_ATOM_UPDATE_APPEARANCE, updates)
+	if(updates & UPDATE_NAME)
+		update_name(updates)
+	if(updates & UPDATE_DESC)
+		update_desc(updates)
+	if(updates & UPDATE_ICON)
+		update_icon(updates)
+
+/// Updates the name of the atom
+/atom/proc/update_name(updates=ALL)
+	SHOULD_CALL_PARENT(TRUE)
+	return SEND_SIGNAL(src, COMSIG_ATOM_UPDATE_NAME, updates)
+
+/// Updates the description of the atom
+/atom/proc/update_desc(updates=ALL)
+	SHOULD_CALL_PARENT(TRUE)
+	return SEND_SIGNAL(src, COMSIG_ATOM_UPDATE_DESC, updates)
+
+/// Updates the icon of the atom
+/atom/proc/update_icon(updates=ALL)
+	SIGNAL_HANDLER
+	SHOULD_CALL_PARENT(TRUE)
+
+	if(updates & NONE)
+		return // NONE is being sent on purpose, and thus no signal should be sent.
+
+	updates &= ~SEND_SIGNAL(src, COMSIG_ATOM_UPDATE_ICON, updates)
+	if(updates & UPDATE_ICON_STATE)
+		update_icon_state()
+		SEND_SIGNAL(src, COMSIG_ATOM_UPDATE_ICON_STATE)
+
+	if(updates & UPDATE_OVERLAYS)
+		var/list/new_overlays = update_overlays(updates)
+		if(managed_overlays)
+			cut_overlay(managed_overlays)
+			managed_overlays = null
+		if(length(new_overlays))
+			if(length(new_overlays) == 1)
+				managed_overlays = new_overlays[1]
+			else
+				managed_overlays = new_overlays
+			add_overlay(new_overlays)
+		SEND_SIGNAL(src, COMSIG_ATOM_UPDATE_OVERLAYS)
+
+	SEND_SIGNAL(src, COMSIG_ATOM_UPDATED_ICON, updates)
+
+/// Updates the icon state of the atom
+/atom/proc/update_icon_state()
+	return
+
+/// Updates the overlays of the atom. It has to return a list of overlays if it can't call the parent to create one. The list can contain anything that would be valid for the add_overlay proc: Images, mutable appearances, icon states...
+/atom/proc/update_overlays()
+	return list()
+
 /atom/proc/relaymove()
 	return
 
@@ -454,6 +517,12 @@
 /atom/proc/unemag()
 	return
 
+/atom/proc/cmag_act()
+	return
+
+/atom/proc/uncmag()
+	return
+
 /**
  * Respond to a radioactive wave hitting this atom
  *
@@ -474,7 +543,7 @@
 
 /atom/proc/hitby(atom/movable/AM, skipcatch, hitpush, blocked, datum/thrownthing/throwingdatum)
 	if(density && !has_gravity(AM)) //thrown stuff bounces off dense stuff in no grav, unless the thrown stuff ends up inside what it hit(embedding, bola, etc...).
-		addtimer(CALLBACK(src, .proc/hitby_react, AM), 2)
+		addtimer(CALLBACK(src, PROC_REF(hitby_react), AM), 2)
 
 /atom/proc/hitby_react(atom/movable/AM)
 	if(AM && isturf(AM.loc))
@@ -490,7 +559,7 @@
 
 /atom/proc/update_filters()
 	filters = null
-	filter_data = sortTim(filter_data, /proc/cmp_filter_data_priority, TRUE)
+	filter_data = sortTim(filter_data, GLOBAL_PROC_REF(cmp_filter_data_priority), TRUE)
 	for(var/f in filter_data)
 		var/list/data = filter_data[f]
 		var/list/arguments = data.Copy()
@@ -580,7 +649,7 @@
 				//Add the list if it does not exist.
 				if(!fingerprintshidden)
 					fingerprintshidden = list()
-				fingerprintshidden += text("\[[time_stamp()]\] (Wearing gloves). Real name: [], Key: []", H.real_name, H.key)
+				fingerprintshidden += text("\[[all_timestamps()]\] (Wearing gloves). Real name: [], Key: []", H.real_name, H.key)
 				fingerprintslast = H.ckey
 			return FALSE
 		if(!fingerprints)
@@ -588,7 +657,7 @@
 				//Add the list if it does not exist.
 				if(!fingerprintshidden)
 					fingerprintshidden = list()
-				fingerprintshidden += text("\[[time_stamp()]\] Real name: [], Key: []", H.real_name, H.key)
+				fingerprintshidden += text("\[[all_timestamps()]\] Real name: [], Key: []", H.real_name, H.key)
 				fingerprintslast = H.ckey
 			return TRUE
 	else
@@ -596,7 +665,7 @@
 			//Add the list if it does not exist.
 			if(!fingerprintshidden)
 				fingerprintshidden = list()
-			fingerprintshidden += text("\[[time_stamp()]\] Real name: [], Key: []", M.real_name, M.key)
+			fingerprintshidden += text("\[[all_timestamps()]\] Real name: [], Key: []", M.real_name, M.key)
 			fingerprintslast = M.ckey
 	return
 
@@ -639,14 +708,14 @@
 		if(!ignoregloves)
 			if(H.gloves && H.gloves != src)
 				if(fingerprintslast != H.ckey)
-					fingerprintshidden += text("\[[]\](Wearing gloves). Real name: [], Key: []", time_stamp(), H.real_name, H.key)
+					fingerprintshidden += text("\[[all_timestamps()]\] (Wearing gloves). Real name: [], Key: []", H.real_name, H.key)
 					fingerprintslast = H.ckey
 				H.gloves.add_fingerprint(M)
 				return FALSE
 
 		//More adminstuffz
 		if(fingerprintslast != H.ckey)
-			fingerprintshidden += text("\[[]\]Real name: [], Key: []", time_stamp(), H.real_name, H.key)
+			fingerprintshidden += text("\[[all_timestamps()]\] Real name: [], Key: []", H.real_name, H.key)
 			fingerprintslast = H.ckey
 
 		//Make the list if it does not exist.
@@ -663,7 +732,7 @@
 	else
 		//Smudge up dem prints some
 		if(fingerprintslast != M.ckey)
-			fingerprintshidden += text("\[[]\]Real name: [], Key: []", time_stamp(), M.real_name, M.key)
+			fingerprintshidden += text("\[[all_timestamps()]\] Real name: [], Key: []", M.real_name, M.key)
 			fingerprintslast = M.ckey
 
 	return
@@ -997,7 +1066,7 @@ GLOBAL_LIST_EMPTY(blood_splatter_icons)
 	if(length(speech_bubble_hearers))
 		var/image/I = image('icons/mob/talk.dmi', src, "[bubble_icon][say_test(message)]", FLY_LAYER)
 		I.appearance_flags = APPEARANCE_UI_IGNORE_ALPHA
-		INVOKE_ASYNC(GLOBAL_PROC, /.proc/flick_overlay, I, speech_bubble_hearers, 30)
+		INVOKE_ASYNC(GLOBAL_PROC, GLOBAL_PROC_REF(flick_overlay), I, speech_bubble_hearers, 30)
 
 /atom/proc/speech_bubble(bubble_state = "", bubble_loc = src, list/bubble_recipients = list())
 	return
@@ -1090,10 +1159,10 @@ GLOBAL_LIST_EMPTY(blood_splatter_icons)
 
 /*
 	Checks whether this atom can traverse the destination object when used as source for AStar.
-	This should only be used as an override to /obj/proc/CanAStarPass. Aka don't use this unless you can't change the object's proc.
+	This should only be used as an override to /obj/proc/CanPathfindPass. Aka don't use this unless you can't change the object's proc.
 	Returning TRUE here will override the above proc's result.
 */
-/atom/proc/CanAStarPassTo(ID, dir, obj/destination)
+/atom/proc/CanPathfindPassTo(ID, dir, obj/destination)
 	return FALSE
 
 /** Call this when you want to present a renaming prompt to the user.
@@ -1116,7 +1185,7 @@ GLOBAL_LIST_EMPTY(blood_splatter_icons)
 	// Sanity check that the user can, indeed, rename the thing.
 	// This, sadly, means you can't rename things with a telekinetic pen, but that's
 	// too much of a hassle to make work nicely.
-	if((implement && implement.loc != user) || !in_range(src, user) || user.incapacitated(ignore_lying = TRUE))
+	if((implement && implement.loc != user) || !in_range(src, user) || HAS_TRAIT(user, TRAIT_HANDS_BLOCKED))
 		return null
 
 	var/prefix = ""
@@ -1149,7 +1218,7 @@ GLOBAL_LIST_EMPTY(blood_splatter_icons)
 	else if(!in_range(src, user))
 		to_chat(user, "<span class='warning'>You cannot rename [src] from here.</span>")
 		return null
-	else if (user.incapacitated(ignore_lying = TRUE))
+	else if(HAS_TRAIT(user, TRAIT_HANDS_BLOCKED))
 		to_chat(user, "<span class='warning'>You cannot rename [src] in your current state.</span>")
 		return null
 
@@ -1197,3 +1266,23 @@ GLOBAL_LIST_EMPTY(blood_splatter_icons)
 		return
 	. = density
 	density = new_value
+
+
+/**
+ * This proc is used for telling whether something can pass by this atom in a given direction, for use by the pathfinding system.
+ *
+ * Trying to generate one long path across the station will call this proc on every single object on every single tile that we're seeing if we can move through, likely
+ * multiple times per tile since we're likely checking if we can access said tile from multiple directions, so keep these as lightweight as possible.
+ *
+ * For turfs this will only be used if pathing_pass_method is TURF_PATHING_PASS_PROC
+ *
+ * Arguments:
+ * * ID- An ID card representing what access we have (and thus if we can open things like airlocks or windows to pass through them). The ID card's physical location does not matter, just the reference
+ * * to_dir- What direction we're trying to move in, relevant for things like directional windows that only block movement in certain directions
+ * * caller- The movable we're checking pass flags for, if we're making any such checks
+ * * no_id: When true, doors with public access will count as impassible
+ **/
+/atom/proc/CanPathfindPass(obj/item/card/id/ID, to_dir, atom/movable/caller, no_id = FALSE)
+	if(caller && (caller.pass_flags & pass_flags_self))
+		return TRUE
+	. = !density

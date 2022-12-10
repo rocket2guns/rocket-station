@@ -29,8 +29,9 @@
 	melee_damage_type = STAMINA
 	admin_spawned = TRUE
 
-/mob/living/simple_animal/hostile/guardian/healer/New()
-	..()
+/mob/living/simple_animal/hostile/guardian/healer/Destroy()
+	beacon = null
+	return ..()
 
 /mob/living/simple_animal/hostile/guardian/healer/Life(seconds, times_fired)
 	..()
@@ -89,7 +90,7 @@
 	set desc = "Mark a floor as your beacon point, allowing you to warp targets to it. Your beacon will not work in unfavorable atmospheric conditions."
 	if(beacon_cooldown < world.time)
 		var/turf/beacon_loc = get_turf(loc)
-		if(istype(beacon_loc, /turf/simulated/floor))
+		if(isfloorturf(beacon_loc))
 			var/turf/simulated/floor/F = beacon_loc
 			F.icon = 'icons/turf/floors.dmi'
 			F.name = "bluespace recieving pad"

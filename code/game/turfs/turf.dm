@@ -27,7 +27,7 @@
 	//Properties for both
 	var/temperature = T20C
 
-	var/blocks_air = 0
+	var/blocks_air = FALSE
 
 	var/datum/pathnode/PNode = null //associated PathNode in the A* algorithm
 
@@ -54,6 +54,10 @@
 	proc/deserialize_air(list/data)
 		return
 
+
+	/// How pathing algorithm will check if this turf is passable by itself (not including content checks). By default it's just density check.
+	/// WARNING: Currently to use a density shortcircuiting this does not support dense turfs with special allow through function
+	var/pathing_pass_method = TURF_PATHING_PASS_DENSITY
 
 /turf/Initialize(mapload)
 	SHOULD_CALL_PARENT(FALSE)
@@ -108,6 +112,7 @@
 		for(var/A in B.contents)
 			qdel(A)
 		return
+	REMOVE_FROM_SMOOTH_QUEUE(src)
 	// Adds the adjacent turfs to the current atmos processing
 	for(var/turf/simulated/T in atmos_adjacent_turfs)
 		SSair.add_to_active(T)
@@ -219,7 +224,7 @@
 // Removes all signs of lattice on the pos of the turf -Donkieyo
 /turf/proc/RemoveLattice()
 	var/obj/structure/lattice/L = locate(/obj/structure/lattice, src)
-	if(L)
+	if(L && !(L.resistance_flags & INDESTRUCTIBLE))
 		qdel(L)
 
 /turf/proc/dismantle_wall(devastated = FALSE, explode = FALSE)
@@ -229,7 +234,7 @@
 	return ChangeTurf(path, defer_change, keep_icon, ignore_air)
 
 //Creates a new turf
-/turf/proc/ChangeTurf(path, defer_change = FALSE, keep_icon = TRUE, ignore_air = FALSE)
+/turf/proc/ChangeTurf(path, defer_change = FALSE, keep_icon = TRUE, ignore_air = FALSE, copy_existing_baseturf = TRUE)
 	if(!path)
 		return
 	if(!GLOB.use_preloader && path == type) // Don't no-op if the map loader requires it to be reconstructed
@@ -250,7 +255,8 @@
 	changing_turf = TRUE
 	qdel(src)	//Just get the side effects and call Destroy
 	var/turf/W = new path(src)
-	W.baseturf = old_baseturf
+	if(copy_existing_baseturf)
+		W.baseturf = old_baseturf
 
 	if(!defer_change)
 		W.AfterChange(ignore_air)
@@ -290,7 +296,7 @@
 	levelupdate()
 	CalculateAdjacentTurfs()
 
-	if(SSair && !ignore_air)
+	if(!ignore_air)
 		SSair.add_to_active(src)
 
 	//update firedoor adjacency
@@ -324,10 +330,10 @@
 		var/turf_count = 0
 
 		for(var/turf/T in atmos_adjacent_turfs)
-			if(istype(T, /turf/space))//Counted as no air
+			if(isspaceturf(T))//Counted as no air
 				turf_count++//Considered a valid turf for air calcs
 				continue
-			else if(istype(T, /turf/simulated/floor))
+			else if(isfloorturf(T))
 				var/turf/simulated/S = T
 				if(S.air)//Add the air's contents to the holders
 					aoxy += S.air.oxygen
@@ -360,9 +366,9 @@
 	for(var/mob/living/M in src)
 		if(M == U)
 			continue//Will not harm U. Since null != M, can be excluded to kill everyone.
-		INVOKE_ASYNC(M, /mob/.proc/gib)
+		INVOKE_ASYNC(M, TYPE_PROC_REF(/mob, gib))
 	for(var/obj/mecha/M in src)//Mecha are not gibbed but are damaged.
-		INVOKE_ASYNC(M, /obj/mecha/.proc/take_damage, 100, "brute")
+		INVOKE_ASYNC(M, TYPE_PROC_REF(/obj/mecha, take_damage), 100, "brute")
 
 /turf/proc/Bless()
 	flags |= NOJAUNT
@@ -510,10 +516,7 @@
 /turf/proc/acid_melt()
 	return
 
-/turf/handle_fall(mob/faller, forced)
-	faller.lying = pick(90, 270)
-	if(!forced)
-		return
+/turf/handle_fall()
 	if(has_gravity(src))
 		playsound(src, "bodyfall", 50, TRUE)
 
@@ -601,3 +604,24 @@
 
 /turf/AllowDrop()
 	return TRUE
+
+/**
+ * Returns adjacent turfs to this turf that are reachable, in all cardinal directions
+ *
+ * Arguments:
+ * * caller: The movable, if one exists, being used for mobility checks to see what tiles it can reach
+ * * ID: An ID card that decides if we can gain access to doors that would otherwise block a turf
+ * * simulated_only: Do we only worry about turfs with simulated atmos, most notably things that aren't space?
+ * * no_id: When true, doors with public access will count as impassible
+*/
+/turf/proc/reachableAdjacentTurfs(caller, ID, simulated_only, no_id = FALSE)
+	var/static/space_type_cache = typecacheof(/turf/space)
+	. = list()
+
+	for(var/iter_dir in GLOB.cardinal)
+		var/turf/turf_to_check = get_step(src, iter_dir)
+		if(!turf_to_check || (simulated_only && space_type_cache[turf_to_check.type]))
+			continue
+		if(turf_to_check.density || LinkBlockedWithAccess(turf_to_check, caller, ID, no_id = no_id))
+			continue
+		. += turf_to_check

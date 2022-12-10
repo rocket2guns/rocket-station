@@ -73,7 +73,7 @@
 		locked = FALSE
 		add_overlay("sparking")
 		to_chat(user, "<span class='notice'>You break the lock on [src].</span>")
-		addtimer(CALLBACK(src, .proc/update_icon), 1 SECONDS)
+		addtimer(CALLBACK(src, TYPE_PROC_REF(/atom, update_icon)), 1 SECONDS)
 		check_for_sync()
 
 /obj/structure/closet/secure_closet/attack_hand(mob/user)

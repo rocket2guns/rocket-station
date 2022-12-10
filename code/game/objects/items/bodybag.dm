@@ -29,7 +29,7 @@
 
 
 /obj/structure/closet/body_bag/attackby(obj/item/I, mob/user, params)
-	if(istype(I, /obj/item/pen))
+	if(is_pen(I))
 		var/t = rename_interactive(user, I)
 		if(isnull(t))
 			return
@@ -49,14 +49,14 @@
 
 /obj/structure/closet/body_bag/close()
 	if(..())
-		density = 0
+		density = FALSE
 		return TRUE
 	return FALSE
 
 /obj/structure/closet/body_bag/update_overlays()
 	..()
 	if(name != initial(name))
-		add_overlay("bodybag_label")
+		. += "bodybag_label"
 
 /obj/structure/closet/body_bag/MouseDrop(over_object, src_location, over_location)
 	. = ..()

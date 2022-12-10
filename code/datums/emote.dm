@@ -57,7 +57,9 @@
 	/// Types that can use this emote regardless of their state.
 	var/list/mob_type_ignore_stat_typecache
 	/// Species types which the emote will be exclusively available to. Should be subclasses of /datum/species
-	var/species_type_whitelist_typecache
+	var/list/species_type_whitelist_typecache
+	/// Species types which the emote will be exclusively not available to. Should be subclasses of /datum/species
+	var/list/species_type_blacklist_typecache
 	/// If we get a target, how do we want to treat it?
 	var/target_behavior = EMOTE_TARGET_BHVR_USE_PARAMS_ANYWAY
 	/// If our target behavior isn't to ignore, what should we look for with targets?
@@ -97,6 +99,10 @@
 	var/cooldown = DEFAULT_EMOTE_COOLDOWN
 	/// How long is the cooldown on the audio of the emote, if it has one?
 	var/audio_cooldown = AUDIO_EMOTE_COOLDOWN
+	/// If the emote is triggered unintentionally, how long would that cooldown be?
+	var/unintentional_audio_cooldown = AUDIO_EMOTE_UNINTENTIONAL_COOLDOWN
+	/// If true, an emote will completely bypass any cooldown when called unintentionally. Necessary for things like deathgasp.
+	var/bypass_unintentional_cooldown = FALSE
 	/// How loud is the audio emote?
 	var/volume = 50
 
@@ -116,6 +122,7 @@
 	mob_type_blacklist_typecache = typecacheof(mob_type_blacklist_typecache)
 	mob_type_ignore_stat_typecache = typecacheof(mob_type_ignore_stat_typecache)
 	species_type_whitelist_typecache = typecacheof(species_type_whitelist_typecache)
+	species_type_blacklist_typecache = typecacheof(species_type_blacklist_typecache)
 
 /datum/emote/Destroy(force)
 	if(force)
@@ -184,10 +191,11 @@
 	var/sound_volume = get_volume(user)
 	// If our sound emote is forced by code, don't worry about cooldowns at all.
 	if(tmp_sound && should_play_sound(user, intentional) && sound_volume > 0)
-		if(!intentional || user.start_audio_emote_cooldown(audio_cooldown))
+		if(bypass_unintentional_cooldown || user.start_audio_emote_cooldown(intentional, intentional ? audio_cooldown : unintentional_audio_cooldown))
 			play_sound_effect(user, intentional, tmp_sound, sound_volume)
 
 	if(msg)
+		user.create_log(EMOTE_LOG, msg)
 		if(isobserver(user))
 			log_ghostemote(msg, user)
 		else
@@ -207,10 +215,10 @@
 			for(var/mob/dead/observer/ghost in viewers(user))
 				ghost.show_message("<span class=deadsay>[displayed_msg]</span>", EMOTE_VISIBLE)
 
-		else if(emote_type & EMOTE_VISIBLE || user.mind?.miming)
+		else if(emote_type & (EMOTE_AUDIBLE | EMOTE_SOUND) && !user.mind?.miming)
 			user.audible_message(displayed_msg, deaf_message = "<span class='emote'>You see how <b>[user]</b> [msg]</span>")
 		else
-			user.visible_message(displayed_msg, blind_message = "<span class='emote'>You hear how <b>[user]</b> [msg]</span>")
+			user.visible_message(displayed_msg, blind_message = "<span class='emote'>You hear how someone [msg]</span>")
 
 		if(!(emote_type & (EMOTE_FORCE_NO_RUNECHAT | EMOTE_SOUND) || suppressed) && !isobserver(user))
 			runechat_emote(user, msg)
@@ -249,6 +257,7 @@
 /**
  * Play the sound effect in an emote.
  * If you want to change the way the playsound call works, override this.
+ * Note! If you want age_based to work, you need to force vary to TRUE.
  * * user - The user of the emote.
  * * intentional - Whether or not the emote was triggered intentionally.
  * * sound_path - Filesystem path to the audio clip to play.
@@ -257,7 +266,8 @@
 /datum/emote/proc/play_sound_effect(mob/user, intentional, sound_path, sound_volume)
 	if(age_based && ishuman(user))
 		var/mob/living/carbon/human/H = user
-		playsound(user.loc, sound_path, sound_volume, vary, frequency = H.get_age_pitch())
+		// Vary needs to be true as otherwise frequency changes get ignored deep within playsound_local :(
+		playsound(user.loc, sound_path, sound_volume, TRUE, frequency = H.get_age_pitch())
 	else
 		playsound(user.loc, sound_path, sound_volume, vary)
 
@@ -300,7 +310,7 @@
 		return TRUE
 	// if our emote would play sound but another audio emote is on cooldown, prevent this emote from being used.
 	// Note that this only applies to intentional emotes
-	if(get_sound(user) && should_play_sound(user, intentional) && !user.can_use_audio_emote())
+	if(get_sound(user) && should_play_sound(user, intentional) && !user.can_use_audio_emote(intentional))
 		return FALSE
 	var/cooldown_in_use
 	if(!isnull(user.emote_cooldown_override))
@@ -473,14 +483,19 @@
 
 	if(ishuman(user))
 		var/mob/living/carbon/human/H = user
-		if(species_type_whitelist_typecache && H.dna && !is_type_in_typecache(H.dna.species, species_type_whitelist_typecache))
-			return FALSE
+		if(H.dna)
+			// Since the typecaches might be null as a valid option, it looks like we do need to check that these exist first.
+			if(species_type_whitelist_typecache && !is_type_in_typecache(H.dna.species, species_type_whitelist_typecache))
+				return FALSE
+
+			if(species_type_blacklist_typecache && is_type_in_typecache(H.dna.species, species_type_blacklist_typecache))
+				return FALSE
 
 	if(intentional && only_unintentional)
 		return FALSE
 
 	if(check_mute(user.client?.ckey, MUTE_EMOTE))
-		to_chat(src, "<span class='warning'>You cannot send emotes (muted).</span>")
+		to_chat(user, "<span class='warning'>You cannot send emotes (muted).</span>")
 		return FALSE
 
 	if(status_check && !is_type_in_typecache(user, mob_type_ignore_stat_typecache))
@@ -494,7 +509,7 @@
 			if(stat)
 				to_chat(user, "<span class='warning'>You cannot [key] while [stat]!</span>")
 			return FALSE
-		if(HAS_TRAIT(src, TRAIT_FAKEDEATH))
+		if(HAS_TRAIT(user, TRAIT_FAKEDEATH))
 			// Don't let people blow their cover by mistake
 			return FALSE
 		if(hands_use_check && !user.can_use_hands() && (iscarbon(user)))
@@ -510,14 +525,14 @@
 	else
 		// deadchat handling
 		if(check_mute(user.client?.ckey, MUTE_DEADCHAT))
-			to_chat(src, "<span class='warning'>You cannot send deadchat emotes (muted).</span>")
+			to_chat(user, "<span class='warning'>You cannot send deadchat emotes (muted).</span>")
 			return FALSE
 		if(!(user.client?.prefs.toggles & PREFTOGGLE_CHAT_DEAD))
-			to_chat(src, "<span class='warning'>You have deadchat muted.</span>")
+			to_chat(user, "<span class='warning'>You have deadchat muted.</span>")
 			return FALSE
 		if(!check_rights(R_ADMIN, FALSE, user))
 			if(!GLOB.dsay_enabled)
-				to_chat(src, "<span class='warning'>Deadchat is globally muted</span>")
+				to_chat(user, "<span class='warning'>Deadchat is globally muted</span>")
 				return FALSE
 
 /**
@@ -603,6 +618,7 @@
 
 
 	log_emote(text, src)
+	create_log(EMOTE_LOG, text)
 
 	var/ghost_text = "<b>[src]</b> [text]"
 

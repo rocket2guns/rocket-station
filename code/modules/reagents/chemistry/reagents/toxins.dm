@@ -154,6 +154,7 @@
 	name = "Radium"
 	id = "radium"
 	description = "Radium is an alkaline earth metal. It is extremely radioactive."
+	process_flags = ORGANIC | SYNTHETIC
 	reagent_state = SOLID
 	color = "#C7C7C7" // rgb: 199,199,199
 	penetrates_skin = TRUE
@@ -179,9 +180,7 @@
 	taste_description = "slime"
 
 /datum/reagent/mutagen/reaction_mob(mob/living/M, method=REAGENT_TOUCH, volume)
-	if(!..())
-		return
-	if(!M.dna || HAS_TRAIT(M, TRAIT_BADDNA) || HAS_TRAIT(M, TRAIT_GENELESS))
+	if(!M || !M.dna || HAS_TRAIT(M, TRAIT_BADDNA) || HAS_TRAIT(M, TRAIT_GENELESS))
 		return //No robots, AIs, aliens, Ians or other mobs should be affected by this.
 	if((method==REAGENT_TOUCH && prob(33)) || method==REAGENT_INGEST)
 		randmutb(M)
@@ -349,15 +348,13 @@
 				else
 					var/melted_something = FALSE
 					if(H.wear_mask && !(H.wear_mask.resistance_flags & ACID_PROOF))
+						to_chat(H, "<span class='danger'>Your [H.wear_mask.name] melts away!</span>")
 						qdel(H.wear_mask)
-						H.update_inv_wear_mask()
-						to_chat(H, "<span class='danger'>Your [H.wear_mask] melts away!</span>")
 						melted_something = TRUE
 
 					if(H.head && !(H.head.resistance_flags & ACID_PROOF))
+						to_chat(H, "<span class='danger'>Your [H.head.name] melts away!</span>")
 						qdel(H.head)
-						H.update_inv_head()
-						to_chat(H, "<span class='danger'>Your [H.head] melts away!</span>")
 						melted_something = TRUE
 					if(melted_something)
 						return
@@ -449,16 +446,27 @@
 	drink_icon ="beerglass"
 	drink_name = "Beer glass"
 	drink_desc = "A freezing pint of beer"
+	can_synth = FALSE
 	taste_description = "beer"
 	taste_description = "piss water"
 
 /datum/reagent/beer2/on_mob_life(mob/living/M)
 	var/update_flags = STATUS_UPDATE_NONE
 	switch(current_cycle)
-		if(1 to 50)
-			M.Sleeping(4 SECONDS)
+		if(1 to 5)
+			if(prob(25))
+				M.emote("yawn")
+		if(6 to 9)
+			M.AdjustEyeBlurry(10 SECONDS)
+			if(prob(35))
+				M.emote("yawn")
+		if(10)
+			M.emote("faint")
+			M.Weaken(4 SECONDS)
+		if(11 to 50)
+			M.Paralyse(4 SECONDS)
 		if(51 to INFINITY)
-			M.Sleeping(4 SECONDS)
+			M.Paralyse(4 SECONDS)
 			update_flags |= M.adjustToxLoss((current_cycle - 50)*REAGENTS_EFFECT_MULTIPLIER, FALSE)
 	return ..() | update_flags
 
@@ -1051,7 +1059,7 @@
 			var/mob/living/carbon/C = M
 			if(!C.wear_mask) // If not wearing a mask
 				C.adjustToxLoss(lethality)
-		if(istype(M, /mob/living/simple_animal/diona)) //nymphs take EVEN MORE damage
+		if(isnymph(M)) //nymphs take EVEN MORE damage
 			var/mob/living/simple_animal/diona/D = M
 			D.adjustHealth(100)
 	..()
@@ -1175,9 +1183,7 @@
 	taste_description = "slime"
 
 /datum/reagent/glowing_slurry/reaction_mob(mob/living/M, method=REAGENT_TOUCH, volume) //same as mutagen
-	if(!..())
-		return
-	if(!M.dna)
+	if(!M || !M.dna)
 		return //No robots, AIs, aliens, Ians or other mobs should be affected by this.
 	if((method==REAGENT_TOUCH && prob(50)) || method==REAGENT_INGEST)
 		randmutb(M)

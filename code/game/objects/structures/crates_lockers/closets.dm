@@ -24,6 +24,7 @@
 	var/storage_capacity = 30 //This is so that someone can't pack hundreds of items in a locker/crate then open it in a populated area to crash clients.
 	var/material_drop = /obj/item/stack/sheet/metal
 	var/material_drop_amount = 2
+	var/transparent
 
 	serialize()
 		var/list/data = ..()
@@ -52,7 +53,7 @@
 		// This includes maint loot spawners. The problem with that is if a closet loads before a spawner,
 		// the loot will just be in a pile. Adding a timer with 0 delay will cause it to only take in contents once the MC has loaded,
 		// therefore solving the issue on mapload. During rounds, everything will happen as normal
-		addtimer(CALLBACK(src, .proc/take_contents), 0)
+		addtimer(CALLBACK(src, PROC_REF(take_contents)), 0)
 	populate_contents() // Spawn all its stuff
 	update_icon() // Set it to the right icon if needed
 
@@ -148,7 +149,7 @@
 	for(var/mob/M in loc)
 		if(itemcount >= storage_capacity)
 			break
-		if(istype(M, /mob/dead/observer))
+		if(isobserver(M))
 			continue
 		if(istype(M, /mob/living/simple_animal/bot/mulebot))
 			continue
@@ -256,13 +257,13 @@
 		return
 	if(O.loc == user)
 		return
-	if(user.restrained() || user.stat || user.IsWeakened() || user.IsStunned() || user.IsParalyzed() || user.lying)
+	if(user.restrained() || HAS_TRAIT(user, TRAIT_HANDS_BLOCKED))
 		return
 	if((!( istype(O, /atom/movable) ) || O.anchored || get_dist(user, src) > 1 || get_dist(user, O) > 1 || user.contents.Find(src)))
 		return
 	if(user.loc==null) // just in case someone manages to get a closet into the blue light dimension, as unlikely as that seems
 		return
-	if(!istype(user.loc, /turf)) // are you in a container/closet/pod/etc?
+	if(!isturf(user.loc)) // are you in a container/closet/pod/etc?
 		return
 	if(!opened)
 		return
@@ -301,8 +302,7 @@
 // tk grab then use on self
 /obj/structure/closet/attack_self_tk(mob/user)
 	add_fingerprint(user)
-	if(!toggle())
-		to_chat(usr, "<span class='notice'>It won't budge!</span>")
+	toggle(user)
 
 /obj/structure/closet/verb/verb_toggleopen()
 	set src in oview(1)
@@ -318,23 +318,22 @@
 		return
 	to_chat(usr, "<span class='warning'>This mob type can't use this verb.</span>")
 
-/obj/structure/closet/update_icon()//Putting the welded stuff in updateicon() so it's easy to overwrite for special cases (Fridges, cabinets, and whatnot)
+/obj/structure/closet/update_icon_state()
 	if(!opened)
-		icon_state = icon_closed
+		icon_state = "[icon_closed][transparent ? "_trans" : ""]"
 	else
-		icon_state = icon_opened
-	update_overlays()
+		icon_state = "[icon_opened][transparent ? "_trans" : ""]"
 
-/obj/structure/closet/proc/update_overlays(transparent = FALSE)
-	cut_overlays()
+/obj/structure/closet/update_overlays()
+	. = ..()
 	if(transparent && opened)
-		add_overlay("[open_door_sprite]_trans")
+		. += "[open_door_sprite]_trans"
 		return
 	if(opened)
-		add_overlay(open_door_sprite)
+		. += open_door_sprite
 		return
 	if(welded)
-		add_overlay("welded")
+		. += "welded"
 
 // Objects that try to exit a locker by stepping were doing so successfully,
 // and due to an oversight in turf/Enter() were going through walls.  That
@@ -408,7 +407,7 @@
 /obj/structure/closet/bluespace
 	name = "bluespace closet"
 	desc = "A storage unit that moves and stores through the fourth dimension."
-	density = 0
+	density = FALSE
 	icon_state = "bluespace"
 	open_door_sprite = "bluespace_door"
 	storage_capacity = 60
@@ -419,20 +418,17 @@
 	return TRUE
 
 /obj/structure/closet/bluespace/proc/UpdateTransparency(atom/movable/AM, atom/location)
-	var/transparent = FALSE
+	transparent = FALSE
 	for(var/atom/A in location)
 		if(A.density && A != src && A != AM)
 			transparent = TRUE
 			break
-	icon_opened = transparent ? "bluespace_open_trans" : "bluespace_open"
-	icon_closed = transparent ? "bluespace_trans" : "bluespace"
-	icon_state = opened ? icon_opened : icon_closed
-	update_overlays(transparent)
+	update_icon()
 
 /obj/structure/closet/bluespace/Crossed(atom/movable/AM, oldloc)
 	if(AM.density)
-		icon_state = opened ? "bluespace_open_trans" : "bluespace_trans"
-		update_overlays(TRUE)
+		transparent = TRUE
+		update_icon()
 
 /obj/structure/closet/bluespace/Move(NewLoc, direct) // Allows for "phasing" throug objects but doesn't allow you to stuff your EOC homebois in one of these and push them through walls.
 	var/turf/T = get_turf(NewLoc)

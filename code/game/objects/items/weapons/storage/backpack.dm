@@ -59,7 +59,7 @@
 	max_combined_w_class = 35
 	resistance_flags = FIRE_PROOF
 	flags_2 = NO_MAT_REDEMPTION_2
-	cant_hold = list(/obj/item/storage/backpack/holding)
+	cant_hold = list(/obj/item/storage/backpack, /obj/item/storage/belt/bluespace)
 	armor = list(MELEE = 0, BULLET = 0, LASER = 0, ENERGY = 0, BOMB = 0, BIO = 0, RAD = 0, FIRE = 60, ACID = 50)
 
 /obj/item/storage/backpack/holding/attackby(obj/item/W, mob/user, params)
@@ -89,7 +89,7 @@
 	name = "Santa's Gift Bag"
 	desc = "Space Santa uses this to deliver toys to all the nice children in space on Christmas! Wow, it's pretty big!"
 	icon_state = "giftbag0"
-	item_state = "giftbag"
+	item_state = "giftbag0"
 	w_class = WEIGHT_CLASS_BULKY
 	max_w_class = WEIGHT_CLASS_NORMAL
 	max_combined_w_class = 400 // can store a ton of shit!
@@ -98,6 +98,7 @@
 	name = "trophy rack"
 	desc = "It's useful for both carrying extra gear and proudly declaring your insanity."
 	icon_state = "cultpack"
+	item_state = "cultpack"
 
 /obj/item/storage/backpack/clown
 	name = "Giggles Von Honkerton"
@@ -108,7 +109,7 @@
 /obj/item/storage/backpack/clown/syndie
 
 /obj/item/storage/backpack/clown/syndie/populate_contents()
-	new /obj/item/clothing/under/rank/clown(src)
+	new /obj/item/clothing/under/rank/civilian/clown(src)
 	new /obj/item/clothing/shoes/magboots/clown(src)
 	new /obj/item/clothing/mask/chameleon(src)
 	new /obj/item/radio/headset/headset_service(src)
@@ -154,6 +155,13 @@
 	desc = "It's a tough backpack for the daily grind of station life."
 	icon_state = "engiepack"
 	item_state = "engiepack"
+	resistance_flags = FIRE_PROOF
+
+/obj/item/storage/backpack/industrial/atmos
+	name = "atmospherics backpack"
+	desc = "It's a fireproof backpack for Atmospherics Staff."
+	icon_state = "atmospack"
+	item_state = "atmospack"
 	resistance_flags = FIRE_PROOF
 
 /obj/item/storage/backpack/explorer
@@ -207,6 +215,7 @@
 	name = "leather satchel"
 	desc = "It's a very fancy satchel made with fine leather."
 	icon_state = "satchel"
+	item_state = "satchel"
 	resistance_flags = FIRE_PROOF
 	var/strap_side_straight = FALSE
 
@@ -218,7 +227,7 @@
 	if(usr.incapacitated())
 		return
 	strap_side_straight = !strap_side_straight
-	icon_state = strap_side_straight ? "satchel-flipped" : "satchel"
+	item_state = strap_side_straight ? "satchel-flipped" : "satchel"
 	if(ishuman(loc))
 		var/mob/living/carbon/human/H = loc
 		H.update_inv_back()
@@ -229,11 +238,13 @@
 	name = "leather satchel"
 	desc = "An NT Deluxe satchel, with the finest quality leather and the company logo in a thin gold stitch"
 	icon_state = "nt_deluxe"
+	item_state = "satchel"
 
 /obj/item/storage/backpack/satchel/lizard
 	name = "lizard skin handbag"
 	desc = "A handbag made out of what appears to be supple green Unathi skin. A face can be vaguely seen on the front."
 	icon_state = "satchel-lizard"
+	item_state = null
 
 /obj/item/storage/backpack/satchel/withwallet/populate_contents()
 	new /obj/item/storage/wallet/random(src)
@@ -242,70 +253,89 @@
 	name = "satchel"
 	desc = "A deluxe NT Satchel, made of the highest quality leather."
 	icon_state = "satchel-norm"
+	item_state = "satchel-norm"
 
 /obj/item/storage/backpack/satchel_eng
 	name = "industrial satchel"
 	desc = "A tough satchel with extra pockets."
 	icon_state = "satchel-eng"
+	item_state = "satchel-eng"
+	resistance_flags = FIRE_PROOF
+
+/obj/item/storage/backpack/satchel_atmos
+	name = "atmospherics satchel"
+	desc = "A fireproof satchel for keeping gear safe."
+	icon_state = "satchel-atmos"
+	item_state = "satchel-atmos"
 	resistance_flags = FIRE_PROOF
 
 /obj/item/storage/backpack/satchel/explorer
 	name = "explorer satchel"
 	desc = "A robust satchel for stashing your loot."
 	icon_state = "satchel-explorer"
-	item_state = "securitypack"
+	item_state = "satchel-explorer"
 
 /obj/item/storage/backpack/satchel_med
 	name = "medical satchel"
 	desc = "A sterile satchel used in medical departments."
 	icon_state = "satchel-med"
+	item_state = "satchel-med"
 
 /obj/item/storage/backpack/satchel_vir
 	name = "virologist satchel"
 	desc = "A sterile satchel with virologist colours."
 	icon_state = "satchel-vir"
+	item_state = "satchel-vir"
 
 /obj/item/storage/backpack/satchel_chem
 	name = "chemist satchel"
 	desc = "A sterile satchel with chemist colours."
 	icon_state = "satchel-chem"
+	item_state = "satchel-chem"
 
 /obj/item/storage/backpack/satchel_gen
 	name = "geneticist satchel"
 	desc = "A sterile satchel with geneticist colours."
 	icon_state = "satchel-gen"
+	item_state = "satchel-gen"
 
 /obj/item/storage/backpack/satchel_tox
 	name = "scientist satchel"
 	desc = "Useful for holding research materials."
 	icon_state = "satchel-tox"
+	item_state = "satchel-tox"
 	resistance_flags = FIRE_PROOF
 
 /obj/item/storage/backpack/satchel_sec
 	name = "security satchel"
 	desc = "A robust satchel for security related needs."
 	icon_state = "satchel-sec"
+	item_state = "satchel-sec"
 
 /obj/item/storage/backpack/satchel_hyd
 	name = "hydroponics satchel"
 	desc = "A green satchel for plant related work."
 	icon_state = "satchel-hyd"
+	item_state = "satchel-hyd"
 
 /obj/item/storage/backpack/satchel_cap
 	name = "captain's satchel"
 	desc = "An exclusive satchel for Nanotrasen officers."
 	icon_state = "satchel-cap"
+	item_state = "satchel-cap"
 	resistance_flags = FIRE_PROOF
 
 /obj/item/storage/backpack/satchel_blueshield
 	name = "blueshield satchel"
 	desc = "A robust satchel issued to Nanotrasen's finest."
 	icon_state = "satchel-blueshield"
+	item_state = "satchel-blueshield"
 
 /obj/item/storage/backpack/satchel_flat
 	name = "smuggler's satchel"
 	desc = "A very slim satchel that can easily fit into tight spaces."
 	icon_state = "satchel-flat"
+	item_state = "satchel-flat"
 	w_class = WEIGHT_CLASS_NORMAL //Can fit in backpacks itself.
 	max_combined_w_class = 15
 	level = 1
@@ -314,7 +344,7 @@
 /obj/item/storage/backpack/satchel_flat/hide(intact)
 	if(intact)
 		invisibility = INVISIBILITY_MAXIMUM
-		anchored = 1 //otherwise you can start pulling, cover it, and drag around an invisible backpack.
+		anchored = TRUE //otherwise you can start pulling, cover it, and drag around an invisible backpack.
 		icon_state = "[initial(icon_state)]2"
 	else
 		invisibility = initial(invisibility)
@@ -326,16 +356,65 @@
 	new /obj/item/crowbar(src)
 
 /*
- * Duffelbags - My thanks to MrSnapWalk for the original icon and Neinhaus for the job variants - Dave.
+ * Duffelbags
  */
 
 /obj/item/storage/backpack/duffel
 	name = "duffelbag"
-	desc = "A large grey duffelbag designed to hold more items than a regular bag."
+	desc = "A large grey duffelbag designed to hold more items than a regular bag. It slows you down when unzipped."
 	icon_state = "duffel"
 	item_state = "duffel"
 	max_combined_w_class = 30
-	slowdown = 1
+	/// Is the bag zipped up?
+	var/zipped = TRUE
+	/// How long it takes to toggle the zip state of this bag
+	var/zip_time = 0.7 SECONDS
+
+/obj/item/storage/backpack/duffel/examine(mob/user)
+	. = ..()
+	. += "<span class='notice'>It is currently [zipped ? "zipped" : "unzipped"]. Alt+Shift+Click to [zipped ? "un-" : ""]zip it!</span>"
+
+/obj/item/storage/backpack/duffel/AltShiftClick(mob/user)
+	. = ..()
+	handle_zipping(user)
+
+/obj/item/storage/backpack/duffel/proc/handle_zipping(mob/user)
+	if(!zip_time || do_after(user, zip_time, target = src))
+		playsound(src, 'sound/items/zip.ogg', 75, TRUE)
+		zipped = !zipped
+
+		if(!zipped && zip_time) // Handle slowdown and stuff now that we just zipped it
+			slowdown = 1
+			show_to(user)
+			return
+
+		slowdown = 0
+		hide_from_all()
+		for(var/obj/item/storage/container in src)
+			container.hide_from_all() // Hide everything inside the bag too
+
+// The following three procs handle refusing access to contents if the duffel is zipped
+
+/obj/item/storage/backpack/duffel/handle_item_insertion(obj/item/I, prevent_warning)
+	if(zipped)
+		to_chat(usr, "<span class='notice'>[src] is zipped shut!</span>")
+		return FALSE
+
+	return ..()
+
+/obj/item/storage/backpack/duffel/remove_from_storage(obj/item/I, atom/new_location)
+	if(zipped)
+		to_chat(usr, "<span class='notice'>[src] is zipped shut!</span>")
+		return FALSE
+
+	return ..()
+
+/obj/item/storage/backpack/duffel/show_to(mob/user)
+	if(zipped)
+		to_chat(usr, "<span class='notice'>[src] is zipped shut!</span>")
+		return FALSE
+
+	return ..()
 
 /obj/item/storage/backpack/duffel/syndie
 	name = "suspicious looking duffelbag"
@@ -344,7 +423,7 @@
 	item_state = "duffel-syndiammo"
 	origin_tech = "syndicate=1"
 	silent = TRUE
-	slowdown = 0
+	zip_time = 0
 	resistance_flags = FIRE_PROOF
 
 /obj/item/storage/backpack/duffel/syndie/med
@@ -380,7 +459,7 @@
 	new /obj/item/clothing/glasses/meson(src)
 	new /obj/item/t_scanner/adv_mining_scanner/lesser(src)
 	new /obj/item/storage/bag/ore(src)
-	new /obj/item/clothing/under/rank/miner/lavaland(src)
+	new /obj/item/clothing/under/rank/cargo/miner/lavaland(src)
 	new /obj/item/encryptionkey/headset_cargo(src)
 	new /obj/item/clothing/mask/gas/explorer(src)
 	new /obj/item/gun/energy/kinetic_accelerator(src)
@@ -544,7 +623,7 @@
 	name = "emergency response team backpack"
 	desc = "A spacious backpack with lots of pockets, used by members of the Nanotrasen Emergency Response Team."
 	icon_state = "ert_commander"
-	item_state = "backpack"
+	item_state = null
 	max_combined_w_class = 30
 	resistance_flags = FIRE_PROOF
 
@@ -582,3 +661,9 @@
 	name = "\improper TSF marine backpack"
 	desc = "A spacious backpack with lots of pockets, worn by marines of the Trans-Solar Federation."
 	icon_state = "ert_solgov"
+
+/obj/item/storage/backpack/ert/deathsquad
+	name = "Deathsquad backpack"
+	desc = "A spacious backpack with lots of pockets, worn by those working in Special Operations."
+	icon_state = "ert_security"
+

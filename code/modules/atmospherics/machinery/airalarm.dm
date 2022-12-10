@@ -58,7 +58,7 @@
 #define MIN_TEMPERATURE 233.15 // -40C
 
 #define AIR_ALARM_FRAME		0
-#define AIR_ALARM_BUILDING	1
+#define AIR_ALARM_UNWIRED	1
 #define AIR_ALARM_READY		2
 
 //all air alarms in area are connected via magic
@@ -70,10 +70,11 @@
 	var/list/air_scrub_info = list()
 
 /obj/machinery/alarm
-	name = "alarm"
+	name = "air alarm"
+	desc = "A wall-mounted device used to control atmospheric equipment. It looks a little cheaply made..."
 	icon = 'icons/obj/monitors.dmi'
 	icon_state = "alarm0"
-	anchored = 1
+	anchored = TRUE
 	use_power = IDLE_POWER_USE
 	idle_power_usage = 4
 	active_power_usage = 8
@@ -92,12 +93,12 @@
 	var/remote_control = TRUE
 	var/rcon_setting = RCON_AUTO
 	var/rcon_time = 0
-	var/locked = 1
+	var/locked = TRUE
 	var/datum/wires/alarm/wires = null
-	var/wiresexposed = 0 // If it's been screwdrivered open.
-	var/aidisabled = 0
+	var/wiresexposed = FALSE // If it's been screwdrivered open.
+	var/aidisabled = FALSE
 	var/AAlarmwires = 31
-	var/shorted = 0
+	var/shorted = FALSE
 
 	// Waiting on a device to respond.
 	// Specifies an id_tag.  NULL means we aren't waiting.
@@ -248,7 +249,7 @@
 			setDir(direction)
 
 		buildstage = 0
-		wiresexposed = 1
+		wiresexposed = TRUE
 		set_pixel_offsets_from_dir(-24, 24, -24, 24)
 
 	. = ..()
@@ -282,8 +283,8 @@
 	apply_preset(1) // Don't cycle.
 	GLOB.air_alarm_repository.update_cache(src)
 
-/obj/machinery/alarm/Initialize()
-	..()
+/obj/machinery/alarm/Initialize(mapload)
+	. = ..()
 	set_frequency(frequency)
 	if(!master_is_operating())
 		elect_master()
@@ -292,8 +293,8 @@
 	if(!alarm_area)
 		alarm_area = get_area(src)
 	if(!alarm_area)
-		log_runtime(EXCEPTION("Air alarm /obj/machinery/alarm lacks alarm_area vars during proc/master_is_operating()"), src)
-		return FALSE
+		. = FALSE
+		CRASH("Air alarm /obj/machinery/alarm lacks alarm_area vars during proc/master_is_operating()")
 	return alarm_area.master_air_alarm && !(alarm_area.master_air_alarm.stat & (NOPOWER|BROKEN))
 
 
@@ -401,9 +402,15 @@
 
 			environment.merge(gas)
 
-/obj/machinery/alarm/update_icon()
+/obj/machinery/alarm/update_icon_state()
 	if(wiresexposed)
-		icon_state = "alarmx"
+		switch(buildstage)
+			if(AIR_ALARM_FRAME)
+				icon_state = "alarm_b1"
+			if(AIR_ALARM_UNWIRED)
+				icon_state = "alarm_b2"
+			if(AIR_ALARM_READY)
+				icon_state = "alarmx"
 		return
 	if((stat & (NOPOWER|BROKEN)) || shorted)
 		icon_state = "alarmp"
@@ -416,6 +423,15 @@
 			icon_state = "alarm2" //yes, alarm2 is yellow alarm
 		if(ATMOS_ALARM_DANGER)
 			icon_state = "alarm1"
+
+/obj/machinery/alarm/update_overlays()
+	. = ..()
+	underlays.Cut()
+
+	if(stat & NOPOWER || buildstage != AIR_ALARM_READY || wiresexposed || shorted)
+		return
+
+	underlays += emissive_appearance(icon, "alarm_lightmask")
 
 /obj/machinery/alarm/proc/register_env_machine(m_id, device_type)
 	var/new_name
@@ -581,7 +597,7 @@
 	if(alarm_area.atmosalert(new_area_danger_level, src)) //if area was in normal state or if area was in alert state
 		post_alert(new_area_danger_level)
 
-	update_icon()
+	update_icon(UPDATE_ICON_STATE)
 	check_for_sync()
 
 /obj/machinery/alarm/proc/post_alert(alert_level)
@@ -651,8 +667,6 @@
 	var/datum/gas_mixture/environment = location.return_air()
 	var/known_total = environment.oxygen + environment.nitrogen + environment.carbon_dioxide + environment.toxins
 	var/total = environment.total_moles()
-	if(total == 0)
-		return null
 
 	var/datum/tlv/cur_tlv
 	var/GET_PP = R_IDEAL_GAS_EQUATION*environment.temperature/environment.volume
@@ -663,24 +677,24 @@
 
 	cur_tlv = TLV["oxygen"]
 	var/oxygen_dangerlevel = cur_tlv.get_danger_level(environment.oxygen*GET_PP)
-	var/oxygen_percent = environment.oxygen / total * 100
+	var/oxygen_percent = total ? environment.oxygen / total * 100 : 0
 
 	cur_tlv = TLV["nitrogen"]
 	var/nitrogen_dangerlevel = cur_tlv.get_danger_level(environment.nitrogen*GET_PP)
-	var/nitrogen_percent = environment.nitrogen / total * 100
+	var/nitrogen_percent = total ? environment.nitrogen / total * 100 : 0
 
 	cur_tlv = TLV["carbon dioxide"]
 	var/co2_dangerlevel = cur_tlv.get_danger_level(environment.carbon_dioxide*GET_PP)
-	var/co2_percent = environment.carbon_dioxide / total * 100
+	var/co2_percent = total ? environment.carbon_dioxide / total * 100 : 0
 
 	cur_tlv = TLV["plasma"]
 	var/plasma_dangerlevel = cur_tlv.get_danger_level(environment.toxins*GET_PP)
-	var/plasma_percent = environment.toxins / total * 100
+	var/plasma_percent = total ? environment.toxins / total * 100 : 0
 
 	cur_tlv = TLV["other"]
 	var/other_moles = total - known_total
 	var/other_dangerlevel = cur_tlv.get_danger_level(other_moles*GET_PP)
-	var/other_percent = other_moles / total * 100
+	var/other_percent = total ? other_moles / total * 100 : 0
 
 	cur_tlv = TLV["temperature"]
 	var/temperature_dangerlevel = cur_tlv.get_danger_level(environment.temperature)
@@ -941,14 +955,14 @@
 			if(alarm_area.atmosalert(ATMOS_ALARM_DANGER, src))
 				post_alert(ATMOS_ALARM_DANGER)
 			alarmActivated = TRUE
-			update_icon()
+			update_icon(UPDATE_ICON_STATE)
 			check_for_sync()
 
 		if("atmos_reset")
 			if(alarm_area.atmosalert(ATMOS_ALARM_NONE, src, TRUE))
 				post_alert(ATMOS_ALARM_NONE)
 			alarmActivated = FALSE
-			update_icon()
+			update_icon(UPDATE_ICON_STATE)
 
 		if("mode")
 			if(!is_authenticated(usr, active_ui))
@@ -998,63 +1012,63 @@
 	add_fingerprint(user)
 
 	switch(buildstage)
-		if(2)
+		if(AIR_ALARM_READY)
 			if(istype(I, /obj/item/card/id) || istype(I, /obj/item/pda))// trying to unlock the interface with an ID card
 				if(stat & (NOPOWER|BROKEN))
-					to_chat(user, "It does nothing")
 					return
+
+				if(allowed(user) && !wires.is_cut(WIRE_IDSCAN))
+					locked = !locked
+					to_chat(user, "<span class='notice'>You [locked ? "lock" : "unlock"] the Air Alarm interface.</span>")
+					SStgui.update_uis(src)
+					check_for_sync()
 				else
-					if(allowed(usr) && !wires.is_cut(WIRE_IDSCAN))
-						locked = !locked
-						to_chat(user, "<span class='notice'>You [ locked ? "lock" : "unlock"] the Air Alarm interface.</span>")
-						SStgui.update_uis(src)
-						check_for_sync()
-					else
-						to_chat(user, "<span class='warning'>Access denied.</span>")
+					to_chat(user, "<span class='warning'>Access denied.</span>")
 				return
 
-		if(1)
+		if(AIR_ALARM_UNWIRED)
 			if(iscoil(I))
 				var/obj/item/stack/cable_coil/coil = I
 				if(coil.get_amount() < 5)
-					to_chat(user, "You need more cable for this!")
+					to_chat(user, "<span class='warning'>You need more cable for this!</span>")
 					return
 
-				to_chat(user, "You wire \the [src]!")
+				to_chat(user, "<span class='notice'>You wire [src]!</span>")
 				playsound(get_turf(src), coil.usesound, 50, 1)
 				coil.use(5)
 
-				buildstage = 2
-				update_icon()
+				buildstage = AIR_ALARM_READY
+				wiresexposed = TRUE
+				update_icon(UPDATE_ICON_STATE | UPDATE_OVERLAYS)
 				first_run()
 				check_for_sync()
 				return
-		if(0)
+		if(AIR_ALARM_FRAME)
 			if(istype(I, /obj/item/airalarm_electronics))
-				to_chat(user, "You insert the circuit!")
+				to_chat(user, "<span class='notice'>You insert [I] into [src].</span>")
 				playsound(get_turf(src), I.usesound, 50, 1)
 				qdel(I)
 				buildstage = 1
-				update_icon()
+				update_icon(UPDATE_ICON_STATE)
 				check_for_sync()
 				return
 	return ..()
 
 /obj/machinery/alarm/crowbar_act(mob/user, obj/item/I)
-	if(buildstage != AIR_ALARM_BUILDING)
+	if(buildstage != AIR_ALARM_UNWIRED)
 		return
 	. = TRUE
 	if(!I.tool_start_check(src, user, 0))
 		return
-	to_chat(user, "You start prying out the circuit.")
+	CROWBAR_ATTEMPT_PRY_CIRCUIT_MESSAGE
 	if(!I.use_tool(src, user, 20, volume = I.tool_volume))
 		return
-	if(buildstage != AIR_ALARM_BUILDING)
+	if(buildstage != AIR_ALARM_UNWIRED)
 		return
-	to_chat(user, "You pry out the circuit!")
-	new /obj/item/airalarm_electronics(user.drop_location())
+	CROWBAR_PRY_CIRCUIT_SUCCESS_MESSAGE
+	new /obj/item/airalarm_electronics(loc)
 	buildstage = AIR_ALARM_FRAME
-	update_icon()
+	update_icon(UPDATE_ICON_STATE)
 	check_for_sync()
 
 /obj/machinery/alarm/multitool_act(mob/user, obj/item/I)
@@ -1073,7 +1087,7 @@
 	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
 		return
 	wiresexposed = !wiresexposed
-	update_icon()
+	update_icon(UPDATE_ICON_STATE | UPDATE_OVERLAYS)
 	if(wiresexposed)
 		SCREWDRIVER_OPEN_PANEL_MESSAGE
 	else
@@ -1087,10 +1101,11 @@
 	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
 		return
 	if(wires.is_all_cut()) // all wires cut
-		var/obj/item/stack/cable_coil/new_coil = new /obj/item/stack/cable_coil(user.drop_location())
+		var/obj/item/stack/cable_coil/new_coil = new /obj/item/stack/cable_coil(loc)
 		new_coil.amount = 5
-		buildstage = AIR_ALARM_BUILDING
-		update_icon()
+		buildstage = AIR_ALARM_UNWIRED
+		update_icon(UPDATE_ICON_STATE)
+		return
 		check_for_sync()
 	if(wiresexposed)
 		wires.Interact(user)
@@ -1101,20 +1116,22 @@
 	. = TRUE
 	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
 		return
-	new /obj/item/mounted/frame/alarm_frame(get_turf(user))
+	new /obj/item/mounted/frame/alarm_frame(loc)
 	WRENCH_UNANCHOR_WALL_MESSAGE
 	qdel(src)
 
 /obj/machinery/alarm/power_change()
 	if(powered(power_channel))
 		stat &= ~NOPOWER
+		set_light(1, LIGHTING_MINIMUM_POWER)
 	else
 		stat |= NOPOWER
-	update_icon()
+		set_light(0)
+	update_icon(UPDATE_ICON_STATE | UPDATE_OVERLAYS)
 
 /obj/machinery/alarm/obj_break(damage_flag)
 	..()
-	update_icon()
+	update_icon(UPDATE_ICON_STATE | UPDATE_OVERLAYS)
 
 /obj/machinery/alarm/deconstruct(disassembled = TRUE)
 	if(!(flags & NODECONSTRUCT))
@@ -1127,15 +1144,19 @@
 
 /obj/machinery/alarm/examine(mob/user)
 	. = ..()
-	if(buildstage < 2)
-		. += "It is not wired."
-	if(buildstage < 1)
-		. += "The circuit is missing."
+	switch(buildstage)
+		if(AIR_ALARM_FRAME)
+			. += "<span class='notice'>Its <i>circuit</i> is missing and the <b>bolts<b> are exposed.</span>"
+		if(AIR_ALARM_UNWIRED)
+			. += "<span class='notice'>The frame is missing <i>wires</i> and the control circuit can be <b>pried out</b>.</span>"
+		if(AIR_ALARM_READY)
+			if(wiresexposed)
+				. += "<span class='notice'>The wiring could be <i>cut and removed</i> or panel could <b>screwed</b> closed.</span>"
 
 /obj/machinery/alarm/proc/unshort_callback()
 	if(shorted)
 		shorted = FALSE
-		update_icon()
+		update_icon(UPDATE_ICON_STATE | UPDATE_OVERLAYS)
 		check_for_sync()
 
 /obj/machinery/alarm/proc/enable_ai_control_callback()
@@ -1145,7 +1166,7 @@
 
 /obj/machinery/alarm/all_access
 	name = "all-access air alarm"
-	desc = "This particular atmos control unit appears to have no access restrictions."
+	desc = "A wall-mounted device used to control atmospheric equipment. Its access restrictions appear to have been removed."
 	locked = FALSE
 	custom_name = TRUE
 	req_access = null
@@ -1161,12 +1182,12 @@ Just an object used in constructing air alarms
 	icon_state = "door_electronics"
 	desc = "Looks like a circuit. Probably is."
 	w_class = WEIGHT_CLASS_SMALL
-	materials = list(MAT_METAL=50, MAT_GLASS=50)
+	materials = list(MAT_METAL = 100, MAT_GLASS = 100)
 	origin_tech = "engineering=2;programming=1"
 	toolspeed = 1
 	usesound = 'sound/items/deconstruct.ogg'
 
 
 #undef AIR_ALARM_FRAME
-#undef AIR_ALARM_BUILDING
+#undef AIR_ALARM_UNWIRED
 #undef AIR_ALARM_READY

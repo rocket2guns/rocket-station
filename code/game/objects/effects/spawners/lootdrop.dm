@@ -1,7 +1,6 @@
 /obj/effect/spawner/lootdrop
 	icon = 'icons/effects/spawner_icons.dmi'
 	icon_state = "questionmark"
-	color = "#00FF00"
 	var/lootcount = 1		//how many items will be spawned
 	var/lootdoubles = TRUE		//if the same item can be spawned twice
 	var/list/loot			//a list of possible items to spawn e.g. list(/obj/item, /obj/structure, /obj/effect)
@@ -31,7 +30,6 @@
 /obj/effect/spawner/lootdrop/maintenance
 	name = "maintenance loot spawner (1 item)"
 	icon_state = "loot"
-	color = null
 
 	//How to balance this table
 	//-------------------------
@@ -73,7 +71,7 @@
 				/obj/item/clothing/head/welding = 10,
 				/obj/item/clothing/mask/gas = 10,
 				/obj/item/clothing/suit/storage/hazardvest = 10,
-				/obj/item/clothing/under/rank/vice = 10,
+				/obj/item/clothing/under/misc/vice = 10,
 				/obj/item/assembly/prox_sensor = 40,
 				/obj/item/assembly/timer = 30,
 				/obj/item/flashlight = 40,
@@ -89,10 +87,11 @@
 				/obj/item/stack/rods{amount = 50} = 10,
 				/obj/item/stack/sheet/cardboard = 20,
 				/obj/item/stack/sheet/metal{amount = 20} = 10,
-				/obj/item/stack/sheet/mineral/plasma{layer = 2.9} = 10,
+				/obj/item/stack/sheet/mineral/plasma = 10,
 				/obj/item/stack/sheet/rglass = 10,
-				/obj/item/book/manual/engineering_construction = 10,
-				/obj/item/book/manual/engineering_hacking = 10,
+				/obj/item/stack/sheet/cloth{amount = 3} = 40,
+				/obj/item/book/manual/wiki/engineering_construction = 10,
+				/obj/item/book/manual/wiki/hacking = 10,
 				/obj/item/clothing/head/cone = 10,
 				/obj/item/geiger_counter = 30,
 				/obj/item/coin/silver = 10,
@@ -102,11 +101,10 @@
 				/obj/item/crowbar/red = 10,
 				/obj/item/restraints/handcuffs/toy = 5,
 				/obj/item/extinguisher = 90,
-				//obj/item/gun/projectile/revolver/russian = 1, //disabled until lootdrop is a proper world proc.
 				/obj/item/hand_labeler = 10,
 				/obj/item/paper/crumpled = 10,
 				/obj/item/pen = 10,
-				 /obj/item/cultivator = 10,
+				/obj/item/cultivator = 10,
 				/obj/item/reagent_containers/spray/pestspray = 10,
 				/obj/item/stock_parts/cell = 30,
 				/obj/item/storage/belt/utility = 20,
@@ -125,15 +123,18 @@
 				/obj/item/wrench = 40,
 				/obj/item/relic = 35,
 				/obj/item/weaponcrafting/receiver = 2,
-				/obj/item/clothing/shoes/brown = 30,
+				/obj/item/clothing/shoes/black = 30,
 				/obj/item/seeds/ambrosia/deus = 10,
 				/obj/item/seeds/ambrosia = 20,
 				/obj/item/clothing/under/color/black = 30,
 				/obj/item/stack/tape_roll = 10,
 				/obj/item/storage/bag/plasticbag = 20,
+				/obj/item/storage/wallet = 20,
+				/obj/item/storage/wallet/random = 5,
 				/obj/item/caution = 10,
 				////////////////CONTRABAND STUFF//////////////////
 				/obj/item/grenade/clown_grenade = 3,
+				/obj/item/grenade/smokebomb = 3,
 				/obj/item/seeds/ambrosia/cruciatus = 3,
 				/obj/item/gun/projectile/automatic/pistol = 1,
 				/obj/item/ammo_box/magazine/m10mm = 4,
@@ -154,11 +155,12 @@
 				/obj/item/storage/box/syndie_kit/space = 2,
 				/obj/item/multitool/ai_detect = 2,
 				/obj/item/implanter/storage = 1,
-				/obj/item/toy/cards/deck/syndicate = 2,
+				/obj/item/deck/cards/syndicate = 2,
 				/obj/item/storage/secure/briefcase/syndie = 2,
 				/obj/item/storage/fancy/cigarettes/cigpack_syndicate = 2,
 				/obj/item/storage/pill_bottle/fakedeath = 2,
-				"" = 64 // Reduce this number if you add things above. Make sure all the numbers in the list add to 100 EXACTLY
+				/obj/item/clothing/suit/jacket/syndicatebomber = 5,
+				"" = 60 // This should be a decently high number for chances where no loot will spawn
 				)
 
 /obj/effect/spawner/lootdrop/maintenance/two
@@ -190,8 +192,6 @@
 /obj/effect/spawner/lootdrop/trade_sol/
 	name = "trader item spawner"
 	lootcount = 6
-	color = "#00FFFF"
-
 
 /obj/effect/spawner/lootdrop/trade_sol/civ
 	name = "1. civilian gear"
@@ -207,7 +207,7 @@
 				/obj/item/soap/syndie = 50,
 				/obj/item/lighter/zippo/gonzofist = 50,
 				/obj/item/stack/nanopaste = 50,
-				/obj/item/clothing/under/psyjump = 50,
+				/obj/item/clothing/under/costume/psyjump = 50,
 				/obj/item/immortality_talisman = 50,
 				/obj/item/grenade/clusterbuster/smoke = 50
 				)
@@ -329,7 +329,6 @@
 				/obj/item/rcd/combat = 25,
 				/obj/item/rpd/bluespace = 25,
 				/obj/item/tank/internals/emergency_oxygen/double = 25,
-				/obj/item/slimepotion/speed = 25,
 				/obj/item/storage/backpack/holding = 25,
 				/obj/item/clothing/glasses/meson/night = 25, // NV mesons
 				/obj/item/clothing/glasses/material = 25, // shows objects, but not mobs, through walls

@@ -294,7 +294,7 @@
 			add_attack_logs(user, t, what_done, custom_level)
 		return
 
-	var/user_str = key_name_log(user) + COORD(user)
+	var/user_str = key_name_log(user) + (istype(user) ? COORD(user) : "")
 	var/target_str
 	var/target_info
 	if(isatom(target))
@@ -354,6 +354,11 @@
 	var/endtime = world.time+time
 	var/starttime = world.time
 	. = 1
+
+	var/mob/living/L
+	if(isliving(user))
+		L = user
+
 	while(world.time < endtime)
 		sleep(1)
 		if(progress)
@@ -363,6 +368,7 @@
 			break
 		if(only_use_extra_checks)
 			if(check_for_true_callbacks(extra_checks))
+				. = 0
 				break
 			continue
 
@@ -370,7 +376,7 @@
 			drifting = 0
 			user_loc = user.loc
 
-		if((!drifting && user.loc != user_loc) || target.loc != target_loc || user.get_active_hand() != holding || user.incapacitated() || user.lying || check_for_true_callbacks(extra_checks))
+		if((!drifting && user.loc != user_loc) || target.loc != target_loc || user.get_active_hand() != holding || user.incapacitated() || (L && IS_HORIZONTAL(L)) || check_for_true_callbacks(extra_checks))
 			. = 0
 			break
 	if(progress)
@@ -417,8 +423,8 @@
 	// By default, checks for weakness and stunned get added to the extra_checks list.
 	// Setting `use_default_checks` to FALSE means that you don't want the do_after to check for these statuses, or that you will be supplying your own checks.
 	if(use_default_checks)
-		extra_checks += CALLBACK(user, /mob/living.proc/IsWeakened)
-		extra_checks += CALLBACK(user, /mob/living.proc/IsStunned)
+		extra_checks += CALLBACK(user, TYPE_PROC_REF(/mob/living, IsWeakened))
+		extra_checks += CALLBACK(user, TYPE_PROC_REF(/mob/living, IsStunned))
 
 	while(world.time < endtime)
 		sleep(1)
@@ -469,7 +475,7 @@ GLOBAL_LIST_INIT(do_after_once_tracker, list())
 		to_chat(user, "<span class='warning'>[attempt_cancel_message]</span>")
 		return FALSE
 	GLOB.do_after_once_tracker[cache_key] = TRUE
-	. = do_after(user, delay, needhand, target, progress, extra_checks = list(CALLBACK(GLOBAL_PROC, .proc/do_after_once_checks, cache_key)))
+	. = do_after(user, delay, needhand, target, progress, extra_checks = list(CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(do_after_once_checks), cache_key)))
 	GLOB.do_after_once_tracker[cache_key] = FALSE
 
 /proc/do_after_once_checks(cache_key)
@@ -663,3 +669,35 @@ GLOBAL_LIST_INIT(do_after_once_tracker, list())
 			if(player.stat == CONSCIOUS)
 				active++
 	return list(total, active, dead, antag)
+
+/**
+  * Safe ckey getter
+  *
+  * Should be used whenever broadcasting public information about a mob,
+  * as this proc will make a best effort to hide the users ckey if they request it.
+  * It will first check the mob for a client, then use the mobs last ckey as a directory lookup.
+  * If a client cant be found to check preferences on, it will just show as DC'd.
+  * This proc should only be used for public facing stuff, not administration related things.
+  *
+  * Arguments:
+  * * M - Mob to get a safe ckey of
+  */
+/proc/safe_get_ckey(mob/M)
+	var/client/C = null
+	if(M.client)
+		C = M.client
+	else if(M.last_known_ckey in GLOB.directory)
+		C = GLOB.directory[M.last_known_ckey]
+
+	// Now we see if we need to respect their privacy
+	var/out_ckey
+	if(C)
+		if(C.prefs.toggles2 & PREFTOGGLE_2_ANON)
+			out_ckey = "(Anon)"
+		else
+			out_ckey = C.ckey
+	else
+		// No client. Just mark as DC'd.
+		out_ckey = "(Disconnected)"
+
+	return out_ckey

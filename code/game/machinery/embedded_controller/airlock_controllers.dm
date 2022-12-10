@@ -38,9 +38,13 @@
 		tag_secure = data["tag_secure"]
 		..()
 
-/obj/machinery/embedded_controller/radio/airlock/Initialize()
-	..()
+/obj/machinery/embedded_controller/radio/airlock/Initialize(mapload)
+	. = ..()
 	program = new/datum/computer/file/embedded_program/airlock(src)
+
+/obj/machinery/embedded_controller/radio/airlock/Destroy()
+	QDEL_NULL(program)
+	return ..()
 
 //Airlock controller for airlock control - most airlocks on the station use this
 /obj/machinery/embedded_controller/radio/airlock/airlock_controller
@@ -100,7 +104,7 @@
 	name = "Access Controller"
 	tag_secure = 1
 
-/obj/machinery/embedded_controller/radio/airlock/access_controller/update_icon()
+/obj/machinery/embedded_controller/radio/airlock/access_controller/update_icon_state()
 	if(on && program)
 		if(program.memory["processing"])
 			icon_state = "access_control_process"

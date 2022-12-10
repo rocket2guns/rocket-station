@@ -21,8 +21,7 @@
 									/obj/effect/proc_holder/spell/vampire/glare = 0,
 									/datum/vampire_passive/vision = 100,
 									/obj/effect/proc_holder/spell/vampire/self/specialize = 150,
-									/datum/vampire_passive/regen = 200,
-									/obj/effect/proc_holder/spell/turf_teleport/shadow_step = 250)
+									/datum/vampire_passive/regen = 200)
 
 	/// list of the peoples UIDs that we have drained, and how much blood from each one
 	var/list/drained_humans = list()
@@ -49,12 +48,16 @@
 	M.RemoveSpell(/obj/effect/proc_holder/spell/vampire/thrall_commune)
 
 /datum/antagonist/vampire/Destroy(force, ...)
-	SSticker.mode.vampires -= owner
 	owner.current.create_log(CONVERSION_LOG, "De-vampired")
 	draining = null
 	QDEL_NULL(subclass)
-	QDEL_LIST(powers)
 	return ..()
+
+/datum/antagonist/vampire/add_owner_to_gamemode()
+	SSticker.mode.vampires += owner
+
+/datum/antagonist/vampire/remove_owner_from_gamemode()
+	SSticker.mode.vampires -= owner
 
 /datum/antagonist/vampire/proc/adjust_nullification(base, extra)
 	// First hit should give full nullification, while subsequent hits increase the value slower
@@ -111,7 +114,7 @@
 		draining = null
 		return
 	add_attack_logs(owner.current, H, "vampirebit & is draining their blood.", ATKLOG_ALMOSTALL)
-	owner.current.visible_message("<span class='danger'>[owner] grabs [H]'s neck harshly and sinks in [owner.current.p_their()] fangs!</span>", "<span class='danger'>You sink your fangs into [H] and begin to drain [H.p_their()] blood.</span>", "<span class='notice'>You hear a soft puncture and a wet sucking noise.</span>")
+	owner.current.visible_message("<span class='danger'>[owner.current] grabs [H]'s neck harshly and sinks in [owner.current.p_their()] fangs!</span>", "<span class='danger'>You sink your fangs into [H] and begin to drain [H.p_their()] blood.</span>", "<span class='notice'>You hear a soft puncture and a wet sucking noise.</span>")
 	if(!iscarbon(owner.current))
 		H.LAssailant = null
 	else
@@ -219,11 +222,6 @@
 				var/datum/vampire_passive/power = p
 				to_chat(owner.current, "<span class='boldnotice'>[power.gain_desc]</span>")
 
-
-/datum/antagonist/vampire/on_gain()
-	SSticker.mode.vampires += owner
-	..()
-
 /datum/antagonist/vampire/proc/check_sun()
 	var/ax = owner.current.x
 	var/ay = owner.current.y
@@ -265,7 +263,7 @@
 			hud.show_hud(hud.hud_version)
 		hud.vampire_blood_display.maptext = "<div align='center' valign='middle' style='position:relative; top:0px; left:6px'><font face='Small Fonts' color='#ce0202'>[bloodusable]</font></div>"
 	handle_vampire_cloak()
-	if(istype(get_turf(owner.current), /turf/space))
+	if(isspaceturf(get_turf(owner.current)))
 		check_sun()
 	if(istype(get_area(owner.current), /area/chapel) && !get_ability(/datum/vampire_passive/full))
 		vamp_burn(7)

@@ -2,8 +2,8 @@
 	name = "cyborg recharging station"
 	icon = 'icons/obj/objects.dmi'
 	icon_state = "borgcharger0"
-	density = 1
-	anchored = 1.0
+	density = TRUE
+	anchored = TRUE
 	use_power = IDLE_POWER_USE
 	idle_power_usage = 5
 	active_power_usage = 1000
@@ -35,8 +35,8 @@
 	go_out()
 	return ..()
 
-/obj/machinery/recharge_station/New()
-	..()
+/obj/machinery/recharge_station/Initialize(mapload)
+	. = ..()
 	component_parts = list()
 	component_parts += new /obj/item/circuitboard/cyborgrecharger(null)
 	component_parts += new /obj/item/stock_parts/capacitor(null)
@@ -44,10 +44,10 @@
 	component_parts += new /obj/item/stock_parts/manipulator(null)
 	component_parts += new /obj/item/stock_parts/cell/high(null)
 	RefreshParts()
-	build_icon()
+	update_icon(UPDATE_ICON_STATE)
 
-/obj/machinery/recharge_station/upgraded/New()
-	..()
+/obj/machinery/recharge_station/upgraded/Initialize(mapload)
+	. = ..()
 	component_parts = list()
 	component_parts += new /obj/item/circuitboard/cyborgrecharger(null)
 	component_parts += new /obj/item/stock_parts/capacitor/super(null)
@@ -98,7 +98,7 @@
 	if(A == occupant)
 		occupant = null
 		updateUsrDialog()
-		update_icon()
+		update_icon(UPDATE_ICON_STATE)
 
 /obj/machinery/recharge_station/narsie_act()
 	go_out()
@@ -127,9 +127,9 @@
 		go_out()
 	..(severity)
 
-/obj/machinery/recharge_station/proc/build_icon()
+/obj/machinery/recharge_station/update_icon_state()
 	if(NOPOWER|BROKEN)
-		if(src.occupant)
+		if(occupant)
 			icon_state = "borgcharger1"
 		else
 			icon_state = "borgcharger0"
@@ -175,7 +175,7 @@
 		return
 	occupant.forceMove(loc)
 	occupant = null
-	build_icon()
+	update_icon(UPDATE_ICON_STATE)
 	use_power = IDLE_POWER_USE
 	check_for_sync()
 	return
@@ -225,7 +225,7 @@
 			return
 		can_accept_user = 1
 
-	else if(istype(user, /mob/living/carbon/human))
+	else if(ishuman(user))
 		var/mob/living/carbon/human/H = user
 
 		if(H.stat == DEAD)
@@ -246,7 +246,7 @@
 	occupant = user
 
 	add_fingerprint(user)
-	build_icon()
+	update_icon(UPDATE_ICON_STATE)
 	update_use_power(1)
 	check_for_sync()
 	return

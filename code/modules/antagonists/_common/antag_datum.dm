@@ -13,8 +13,6 @@ GLOBAL_LIST_EMPTY(antagonists)
 	var/silent = FALSE
 	/// List of other antag datum types that this type can't coexist with.
 	var/list/antag_datum_blacklist
-	/// Should this datum be deleted when the owner's mind is deleted.
-	var/delete_on_mind_deletion = TRUE
 	/// Used to determine if the player jobbanned from this role. Things like `SPECIAL_ROLE_TRAITOR` should go here to determine the role.
 	var/job_rank
 	/// Should we replace the role-banned player with a ghost?
@@ -249,6 +247,7 @@ GLOBAL_LIST_EMPTY(antagonists)
 			assigned_targets += "[O.target]"
 
 	objectives += O
+	return O
 
 /**
  * Announces all objectives of this datum, and only this datum.
@@ -279,7 +278,7 @@ GLOBAL_LIST_EMPTY(antagonists)
 	if(wiki_page_name)
 		to_chat(owner.current, "<span class='motd'>For more information, check the wiki page: ([GLOB.configuration.url.wiki_url]/index.php/[wiki_page_name])</span>")
 	if(is_banned(owner.current) && replace_banned)
-		INVOKE_ASYNC(src, .proc/replace_banned_player)
+		INVOKE_ASYNC(src, PROC_REF(replace_banned_player))
 	return TRUE
 
 /**

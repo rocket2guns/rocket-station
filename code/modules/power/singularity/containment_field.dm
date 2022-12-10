@@ -3,8 +3,8 @@
 	desc = "An energy field."
 	icon = 'icons/obj/singularity.dmi'
 	icon_state = "Contain_F"
-	anchored = 1
-	density = 0
+	anchored = TRUE
+	density = FALSE
 	move_resist = INFINITY
 	resistance_flags = INDESTRUCTIBLE | LAVA_PROOF | FIRE_PROOF | UNACIDABLE | ACID_PROOF
 	flags_2 = RAD_NO_CONTAMINATE_2
@@ -59,7 +59,7 @@
 	if(isliving(mover))
 		shock_field(mover)
 
-	if(istype(mover, /obj/machinery) || istype(mover, /obj/structure) || istype(mover, /obj/mecha))
+	if(ismachinery(mover) || isstructure(mover) || ismecha(mover))
 		bump_field(mover)
 
 /obj/machinery/field/containment/proc/set_master(master1,master2)
@@ -90,7 +90,7 @@
 	if(isliving(mover)) // Don't let mobs through
 		shock_field(mover)
 		return 0
-	if(istype(mover, /obj/machinery) || istype(mover, /obj/structure) || istype(mover, /obj/mecha))
+	if(ismachinery(mover) || isstructure(mover) || ismecha(mover))
 		bump_field(mover)
 		return 0
 	return ..()

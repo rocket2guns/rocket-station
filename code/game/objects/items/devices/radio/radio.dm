@@ -65,7 +65,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	throw_range = 9
 	w_class = WEIGHT_CLASS_SMALL
 
-	materials = list(MAT_METAL=75)
+	materials = list(MAT_METAL = 200, MAT_GLASS = 100)
 
 	var/const/FREQ_LISTENING = 1
 	var/atom/follow_target // Custom follow target for autosay-using bots
@@ -127,13 +127,14 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	return interact(user)
 
 /obj/item/radio/attack_self(mob/user)
-	ui_interact(user)
+	interact(user)
 
 /obj/item/radio/interact(mob/user)
 	if(!user)
 		return 0
 	if(b_stat)
 		wires.Interact(user)
+		return
 	ui_interact(user)
 
 /obj/item/radio/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = TRUE, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
@@ -318,10 +319,10 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	var/role = ""
 	var/lifetime_timer
 	var/message = ""
-	universal_speak = 1
+	universal_speak = TRUE
 
 /mob/living/automatedannouncer/New()
-	lifetime_timer = addtimer(CALLBACK(src, .proc/autocleanup), 10 SECONDS, TIMER_STOPPABLE)
+	lifetime_timer = addtimer(CALLBACK(src, PROC_REF(autocleanup)), 10 SECONDS, TIMER_STOPPABLE)
 	..()
 
 /mob/living/automatedannouncer/Destroy()
@@ -331,7 +332,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	return ..()
 
 /mob/living/automatedannouncer/proc/autocleanup()
-	log_runtime(EXCEPTION("An announcer somehow managed to outlive the radio! Deleting!"), src, list("Message: '[message]'"))
+	stack_trace("An announcer somehow managed to outlive the radio! Deleting! (Message: [message])")
 	qdel(src)
 
 // Interprets the message mode when talking into a radio, possibly returning a connection datum
@@ -393,14 +394,16 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	var/displayname = M.name	// grab the display name (name you get when you hover over someone's icon)
 	var/voicemask = 0 // the speaker is wearing a voice mask
 	var/jobname // the mob's "job"
+	var/rankname // the formatting to be used for the mob's job
 
-	if(jammed)
-		Gibberish_all(message_pieces, 100)
+	if(jammed && !syndiekey)
+		Gibberish_all(message_pieces, 100, 70)
 
 	// --- Human: use their actual job ---
 	if(ishuman(M))
 		var/mob/living/carbon/human/H = M
 		jobname = H.get_assignment()
+		rankname = H.get_authentification_rank()
 
 	// --- Carbon Nonhuman ---
 	else if(iscarbon(M)) // Nonhuman carbon mob
@@ -415,7 +418,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 		jobname = "Cyborg"
 
 	// --- Personal AI (pAI) ---
-	else if(istype(M, /mob/living/silicon/pai))
+	else if(ispAI(M))
 		jobname = "Personal AI"
 
 	// --- Unidentifiable mob ---
@@ -435,6 +438,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	if(syndiekey && syndiekey.change_voice && connection.frequency == SYND_FREQ)
 		displayname = syndiekey.fake_name
 		jobname = "Unknown"
+		rankname = "Unknown"
 		voicemask = TRUE
 
 	// Copy the message pieces so we can safely edit comms line without affecting the actual line
@@ -446,6 +450,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	var/datum/tcomms_message/tcm = new
 	tcm.sender_name = displayname
 	tcm.sender_job = jobname
+	tcm.sender_rank = rankname
 	tcm.message_pieces = message_pieces_copy
 	tcm.source_level = position.z
 	tcm.freq = connection.frequency
@@ -471,9 +476,11 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 		tcm.zlevels = list(position.z)
 		if(!instant)
 			// Simulate two seconds of lag
-			addtimer(CALLBACK(src, .proc/broadcast_callback, tcm), 2 SECONDS)
+			addtimer(CALLBACK(src, PROC_REF(broadcast_callback), tcm), 2 SECONDS)
 		else
-			// Nukeops + Deathsquad headsets are instant and should work the same, whether there is comms or not
+			// Nukeops + Deathsquad headsets are instant and should work the same, whether there is comms or not, on all z levels
+			for(var/z in 1 to world.maxz)
+				tcm.zlevels |= z
 			broadcast_message(tcm)
 			qdel(tcm) // Delete the message datum
 		return TRUE
@@ -572,13 +579,14 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	. = TRUE
 	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
 		return
-	user.set_machine(src)
+
 	b_stat = !b_stat
 	if(!istype(src, /obj/item/radio/beacon))
 		if(b_stat)
 			user.show_message("<span class='notice'>The radio can now be attached and modified!</span>")
 		else
 			user.show_message("<span class='notice'>The radio can no longer be modified or attached!</span>")
+
 		updateDialog()
 
 /obj/item/radio/wirecutter_act(mob/user, obj/item/I)
@@ -594,15 +602,15 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	interact(user)
 
 /obj/item/radio/emp_act(severity)
-	on = 0
+	on = FALSE
 	disable_timer++
-	addtimer(CALLBACK(src, .proc/enable_radio), rand(100, 200))
+	addtimer(CALLBACK(src, PROC_REF(enable_radio)), rand(100, 200))
 
 	if(listening)
 		visible_message("<span class='warning'>[src] buzzes violently!</span>")
 
-	broadcasting = 0
-	listening = 0
+	broadcasting = FALSE
+	listening = FALSE
 	for(var/ch_name in channels)
 		channels[ch_name] = 0
 	..()
@@ -611,7 +619,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	if(disable_timer > 0)
 		disable_timer--
 	if(!disable_timer)
-		on = 1
+		on = TRUE
 
 /obj/item/radio/proc/recalculateChannels()
 	/// Exists so that borg radios and headsets can override it.
@@ -672,7 +680,7 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 
 /obj/item/radio/borg/attackby(obj/item/W as obj, mob/user as mob, params)
 	if(istype(W, /obj/item/encryptionkey/))
-		user.set_machine(src)
+
 		if(keyslot)
 			to_chat(user, "The radio can't hold another key!")
 			return
@@ -683,14 +691,15 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 			keyslot = W
 
 		recalculateChannels()
-	else
-		return ..()
+		return
+
+	return ..()
 
 /obj/item/radio/borg/screwdriver_act(mob/user, obj/item/I)
 	. = TRUE
 	if(!I.use_tool(src, user, 0, volume = 0))
 		return
-	user.set_machine(src)
+
 	if(keyslot)
 		for(var/ch_name in channels)
 			SSradio.remove_object(src, SSradio.radiochannels[ch_name])
@@ -761,14 +770,14 @@ GLOBAL_LIST_INIT(default_medbay_channels, list(
 	return
 
 /obj/item/radio/off
-	listening = 0
+	listening = FALSE
 	dog_fashion = /datum/dog_fashion/back
 
 /obj/item/radio/phone
-	broadcasting = 0
+	broadcasting = FALSE
 	icon = 'icons/obj/items.dmi'
 	icon_state = "red_phone"
-	listening = 1
+	listening = TRUE
 	name = "phone"
 	dog_fashion = null
 

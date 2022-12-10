@@ -4,7 +4,7 @@
 	damage = 0
 	damage_type = OXY
 	nodamage = 1
-	armour_penetration = 100
+	armour_penetration_percentage = 100
 	flag = MAGIC
 
 /obj/item/projectile/magic/death
@@ -116,7 +116,7 @@
 			teleammount++
 			do_teleport(stuff, stuff, 10)
 			var/datum/effect_system/smoke_spread/smoke = new
-			smoke.set_up(max(round(10 - teleammount),1), 0, stuff.loc) //Smoke drops off if a lot of stuff is moved for the sake of sanity
+			smoke.set_up(max(round(10 - teleammount), 1), FALSE, stuff) //Smoke drops off if a lot of stuff is moved for the sake of sanity
 			smoke.start()
 
 /obj/item/projectile/magic/door
@@ -144,7 +144,7 @@
 	var/door_type = pick(door_types)
 	var/obj/structure/mineral_door/D = new door_type(T)
 	T.ChangeTurf(/turf/simulated/floor/plasteel)
-	D.Open()
+	D.operate()
 
 /obj/item/projectile/magic/door/proc/OpenDoor(obj/machinery/door/D)
 	if(istype(D,/obj/machinery/door/airlock))
@@ -170,7 +170,6 @@
 /proc/wabbajack(mob/living/M)
 	if(istype(M) && M.stat != DEAD && !M.notransform)
 		M.notransform = TRUE
-		M.canmove = FALSE
 		M.icon = null
 		M.overlays.Cut()
 		M.invisibility = 101
@@ -222,6 +221,7 @@
 				else
 					new_mob = new /mob/living/carbon/alien/humanoid/sentinel(M.loc)
 				new_mob.universal_speak = TRUE
+				to_chat(M, "<span class='userdanger'>Your consciousness is subsumed by a distant hivemind... you feel murderous hostility towards non-xenomorph life!</span>")
 			if("animal")
 				if(prob(50))
 					var/beast = pick("carp","bear","mushroom","statue", "bat", "goat", "tomato")
@@ -297,7 +297,7 @@
 
 /obj/item/projectile/magic/animate/Bump(atom/change)
 	..()
-	if(istype(change, /obj/item) || istype(change, /obj/structure) && !is_type_in_list(change, GLOB.protected_objects))
+	if(isitem(change) || isstructure(change) && !is_type_in_list(change, GLOB.protected_objects))
 		if(istype(change, /obj/structure/closet/statue))
 			for(var/mob/living/carbon/human/H in change.contents)
 				var/mob/living/simple_animal/hostile/statue/S = new /mob/living/simple_animal/hostile/statue(change.loc, firer)
@@ -357,6 +357,6 @@
 	damage = 20
 	damage_type = BURN
 	nodamage = FALSE
-	armour_penetration = 0
+	armour_penetration_flat = 0
 	flag = MAGIC
 	hitsound = 'sound/weapons/barragespellhit.ogg'

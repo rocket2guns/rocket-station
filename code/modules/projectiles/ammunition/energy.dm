@@ -164,6 +164,7 @@
 	e_cost = 50
 	fire_sound = 'sound/weapons/taser2.ogg'
 	harmful = FALSE
+	delay = 0.6 SECONDS
 
 /obj/item/ammo_casing/energy/disabler/cyborg //seperate balancing for cyborg, again
 	e_cost = 250
@@ -314,3 +315,25 @@
 
 /obj/item/ammo_casing/energy/mimic/newshot()
 	..(mimic_type)
+
+/obj/item/ammo_casing/energy/detective
+	projectile_type = /obj/item/projectile/beam/laser/detective
+	fire_sound = 'sound/weapons/gunshots/gunshot_det_energy.ogg'
+	select_name = "disabler"
+
+/obj/item/ammo_casing/energy/detective/tracker_warrant
+	projectile_type = /obj/item/projectile/beam/laser/detective/tracker_warrant_shot
+	e_cost = 50
+	select_name = "tracker and warrant generator"
+
+/obj/item/ammo_casing/energy/detective/overcharge
+	projectile_type = /obj/item/projectile/beam/laser/detective/overcharged
+	e_cost = 200
+	select_name = "overcharged"
+
+/obj/item/ammo_casing/energy/silencer_ammo
+	projectile_type = /obj/item/projectile/beam/silencer
+	muzzle_flash_effect = null
+	select_name = "silencing dissidents"
+	e_cost = 62.5 // 16 shots
+	fire_sound = 'sound/weapons/silencer_laser.ogg'

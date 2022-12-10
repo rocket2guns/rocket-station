@@ -13,12 +13,16 @@
 	/// Do we have overlays for items held inside the belt?
 	var/use_item_overlays = FALSE
 
-/obj/item/storage/belt/update_icon()
-	if(use_item_overlays)
-		cut_overlays()
-		for(var/obj/item/I in contents)
-			add_overlay("[I.belt_icon]")
-	..()
+/obj/item/storage/belt/update_overlays()
+	. = ..()
+	if(!use_item_overlays)
+		return
+	for(var/obj/item/I in contents)
+		if(!I.belt_icon)
+			continue
+		var/image/belt_image = image(icon, I.belt_icon)
+		belt_image.color = I.color
+		. += belt_image
 
 /obj/item/storage/belt/proc/can_use()
 	return is_equipped()
@@ -107,6 +111,21 @@
 	update_icon()
 	//much roomier now that we've managed to remove two tools
 
+/obj/item/storage/belt/utility/syndi_researcher // A cool looking belt thats essentially a syndicate toolbox
+	desc = "A belt for holding tools, but with style."
+	icon_state = "assaultbelt"
+	item_state = "assault"
+
+/obj/item/storage/belt/utility/syndi_researcher/populate_contents()
+	new /obj/item/screwdriver(src, "red")
+	new /obj/item/wrench(src)
+	new /obj/item/weldingtool/largetank(src)
+	new /obj/item/crowbar/red(src)
+	new /obj/item/wirecutters(src, "red")
+	new /obj/item/multitool/red(src)
+	new /obj/item/stack/cable_coil(src, 30, COLOR_RED)
+	update_icon()
+
 /obj/item/storage/belt/medical
 	name = "medical belt"
 	desc = "Can hold various medical equipment."
@@ -133,7 +152,6 @@
 		/obj/item/reagent_containers/hypospray/autoinjector,
 		/obj/item/reagent_containers/hypospray/CMO,
 		/obj/item/reagent_containers/hypospray/safety,
-		/obj/item/rad_laser,
 		/obj/item/sensor_device,
 		/obj/item/wrench/medical,
 		/obj/item/handheld_defibrillator,
@@ -232,7 +250,8 @@
 		/obj/item/holosign_creator/security,
 		/obj/item/melee/classic_baton/telescopic,
 		/obj/item/restraints/legcuffs/bola,
-		/obj/item/clothing/mask/gas/sechailer)
+		/obj/item/clothing/mask/gas/sechailer,
+		/obj/item/detective_scanner)
 
 /obj/item/storage/belt/security/full/populate_contents()
 	new /obj/item/reagent_containers/spray/pepper(src)
@@ -349,6 +368,21 @@
 	new /obj/item/grenade/chem_grenade/facid(src) //1
 	new /obj/item/grenade/chem_grenade/saringas(src) //1
 
+/obj/item/storage/belt/grenade/tactical // Traitor bundle version
+	name = "tactical grenadier belt"
+	storage_slots = 20 // Not as many slots as the nukie one
+	max_combined_w_class = 40
+
+/obj/item/storage/belt/grenade/tactical/populate_contents()
+	for(var/I in 1 to 5)
+		new /obj/item/grenade/smokebomb(src)
+		new /obj/item/grenade/gluon(src)
+		new /obj/item/grenade/plastic/c4(src) // Five of each
+	for(var/I in 1 to 2)
+		new /obj/item/grenade/frag(src)
+		new /obj/item/grenade/empgrenade(src) // Two of each
+	new /obj/item/grenade/syndieminibomb(src) // One minibomb
+
 /obj/item/storage/belt/military/abductor
 	name = "agent belt"
 	desc = "A belt used by abductor agents."
@@ -431,8 +465,7 @@
 	. = ..()
 	update_icon()
 
-/obj/item/storage/belt/lazarus/update_icon()
-	..()
+/obj/item/storage/belt/lazarus/update_icon_state()
 	icon_state = "[initial(icon_state)]_[length(contents)]"
 
 /obj/item/storage/belt/lazarus/attackby(obj/item/I, mob/user)
@@ -463,8 +496,7 @@
 	for(var/I in 1 to 8)
 		new /obj/item/ammo_casing/shotgun/beanbag(src)
 
-/obj/item/storage/belt/bandolier/update_icon()
-	..()
+/obj/item/storage/belt/bandolier/update_icon_state()
 	icon_state = "[initial(icon_state)]_[length(contents)]"
 
 /obj/item/storage/belt/bandolier/attackby(obj/item/I, mob/user)
@@ -482,7 +514,7 @@
 	max_w_class = WEIGHT_CLASS_NORMAL
 	can_hold = list(
 		/obj/item/gun/projectile/automatic/pistol,
-		/obj/item/gun/projectile/revolver/detective
+		/obj/item/gun/energy/detective
 		)
 
 /obj/item/storage/belt/wands
@@ -609,13 +641,13 @@
 		return
 	playsound(src, 'sound/weapons/blade_unsheath.ogg', 20)
 
-/obj/item/storage/belt/rapier/update_icon()
-	. = ..()
-	icon_state = initial(icon_state)
-	item_state = initial(item_state)
+/obj/item/storage/belt/rapier/update_icon_state()
 	if(length(contents))
 		icon_state = "[icon_state]-rapier"
 		item_state = "[item_state]-rapier"
+	else
+		icon_state = initial(icon_state)
+		item_state = initial(item_state)
 	if(isliving(loc))
 		var/mob/living/L = loc
 		L.update_inv_belt()

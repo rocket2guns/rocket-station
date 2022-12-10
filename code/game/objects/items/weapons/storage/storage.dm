@@ -98,7 +98,7 @@
 		return
 	var/mob/M = usr
 
-	if(istype(M.loc, /obj/mecha) || M.incapacitated(FALSE, TRUE, TRUE)) // Stops inventory actions in a mech as well as while being incapacitated
+	if(ismecha(M.loc) || M.incapacitated(FALSE, TRUE)) // Stops inventory actions in a mech as well as while being incapacitated
 		return
 
 	if(over_object == M && Adjacent(M)) // this must come before the screen objects only block
@@ -108,14 +108,14 @@
 		return
 
 	if((istype(over_object, /obj/structure/table) || isfloorturf(over_object)) && length(contents) \
-		&& loc == M && !M.stat && !M.restrained() && M.canmove && over_object.Adjacent(M) && !istype(src, /obj/item/storage/lockbox)) // Worlds longest `if()`
+		&& loc == M && !M.stat && !M.restrained() && !HAS_TRAIT(M, TRAIT_HANDS_BLOCKED) && over_object.Adjacent(M) && !istype(src, /obj/item/storage/lockbox)) // Worlds longest `if()`
 		var/turf/T = get_turf(over_object)
 		if(isfloorturf(over_object))
 			if(get_turf(M) != T)
 				return // Can only empty containers onto the floor under you
 			if(alert(M, "Empty [src] onto [T]?", "Confirm", "Yes", "No") != "Yes")
 				return
-			if(!(M && over_object && length(contents) && loc == M && !M.stat && !M.restrained() && M.canmove && get_turf(M) == T))
+			if(!(M && over_object && length(contents) && loc == M && !M.stat && !M.restrained() && !HAS_TRAIT(M, TRAIT_HANDS_BLOCKED) && get_turf(M) == T))
 				return // Something happened while the player was thinking
 		hide_from(M)
 		M.face_atom(over_object)
@@ -150,7 +150,7 @@
 
 /obj/item/storage/AltClick(mob/user)
 	. = ..()
-	if(ishuman(user) && Adjacent(user) && !user.incapacitated(FALSE, TRUE, TRUE))
+	if(ishuman(user) && Adjacent(user) && !user.incapacitated(FALSE, TRUE))
 		show_to(user)
 		playsound(loc, "rustle", 50, TRUE, -5)
 		add_fingerprint(user)
@@ -170,7 +170,7 @@
 		L += S.return_inv()
 	for(var/obj/item/gift/G in src)
 		L += G.gift
-		if(istype(G.gift, /obj/item/storage)) // If the gift contains a storage item
+		if(isstorage(G.gift)) // If the gift contains a storage item
 			var/obj/item/storage/S = G.gift
 			L += S.return_inv()
 	for(var/obj/item/folder/F in src)
@@ -211,6 +211,13 @@
 	user.client.screen -= contents
 	if(user.s_active == src)
 		user.s_active = null
+
+/**
+  * Hides the current container interface from all viewers.
+  */
+/obj/item/storage/proc/hide_from_all()
+	for(var/mob/M in mobs_viewing)
+		hide_from(M)
 
 /**
   * Checks all mobs currently viewing the storage inventory, and hides it if they shouldn't be able to see it.
@@ -361,7 +368,7 @@
 			to_chat(usr, "<span class='warning'>[src] cannot hold [I].</span>")
 		return FALSE
 
-	if(length(cant_hold) && istype(I, /obj/item/storage)) //Checks nested storage contents for restricted objects, we don't want people sneaking the NAD in via boxes now, do we?
+	if(length(cant_hold) && isstorage(I)) //Checks nested storage contents for restricted objects, we don't want people sneaking the NAD in via boxes now, do we?
 		var/obj/item/storage/S = I
 		for(var/obj/A in S.return_inv())
 			if(is_type_in_typecache(A, cant_hold))
@@ -383,7 +390,7 @@
 			to_chat(usr, "<span class='warning'>[src] is full, make some space.</span>")
 		return FALSE
 
-	if(I.w_class >= w_class && istype(I, /obj/item/storage))
+	if(I.w_class >= w_class && isstorage(I))
 		if(!istype(src, /obj/item/storage/backpack/holding))	//BoHs should be able to hold backpacks again. The override for putting a BoH in a BoH is in backpack.dm.
 			if(!stop_messages)
 				to_chat(usr, "<span class='warning'>[src] cannot hold [I] as it's a storage item of the same size.</span>")
@@ -460,7 +467,7 @@
 
 	if(istype(src, /obj/item/storage/fancy))
 		var/obj/item/storage/fancy/F = src
-		F.update_icon(TRUE)
+		F.update_icon()
 
 	for(var/_M in mobs_viewing)
 		var/mob/M = _M
@@ -649,7 +656,7 @@
 	while(cur_atom && !(cur_atom in container.contents))
 		if(isarea(cur_atom))
 			return -1
-		if(istype(cur_atom.loc, /obj/item/storage))
+		if(isstorage(cur_atom.loc))
 			depth++
 		cur_atom = cur_atom.loc
 
@@ -670,7 +677,7 @@
 	while(cur_atom && !isturf(cur_atom))
 		if(isarea(cur_atom))
 			return -1
-		if(istype(cur_atom.loc, /obj/item/storage))
+		if(isstorage(cur_atom.loc))
 			depth++
 		cur_atom = cur_atom.loc
 

@@ -1,4 +1,4 @@
-/obj/effect/proc_holder/spell/aoe_turf/conjure/build/mime_wall
+/obj/effect/proc_holder/spell/aoe/conjure/build/mime_wall
 	name = "Invisible Wall"
 	desc = "The mime's performance transmutates into physical reality."
 	school = "mime"
@@ -6,16 +6,16 @@
 	summon_type = list(/obj/effect/forcefield/mime)
 	invocation_type = "emote"
 	invocation_emote_self = "<span class='notice'>You form a wall in front of yourself.</span>"
-	summon_lifespan = 300
-	charge_max = 300
-	clothes_req = 0
+	summon_lifespan = 20 SECONDS
+	base_cooldown = 30 SECONDS
+	clothes_req = FALSE
 	cast_sound = null
-	human_req = 1
+	human_req = TRUE
 
 	action_icon_state = "mime"
 	action_background_icon_state = "bg_mime"
 
-/obj/effect/proc_holder/spell/aoe_turf/conjure/build/mime_wall/Click()
+/obj/effect/proc_holder/spell/aoe/conjure/build/mime_wall/Click()
 	if(usr && usr.mind)
 		if(!usr.mind.miming)
 			to_chat(usr, "<span class='notice'>You must dedicate yourself to silence first.</span>")
@@ -33,9 +33,9 @@
 	desc = "Make or break a vow of silence."
 	school = "mime"
 	panel = "Mime"
-	clothes_req = 0
-	charge_max = 3000
-	human_req = 1
+	clothes_req = FALSE
+	base_cooldown = 5 MINUTES
+	human_req = TRUE
 
 	action_icon_state = "mime_silence"
 	action_background_icon_state = "bg_mime"
@@ -70,13 +70,12 @@
 	wall_type = /obj/effect/forcefield/mime/advanced
 	invocation_type = "emote"
 	invocation_emote_self = "<span class='notice'>You form a blockade in front of yourself.</span>"
-	charge_max = 600
+	base_cooldown = 60 SECONDS
 	sound =  null
 	clothes_req = FALSE
 
 	action_icon_state = "mime_bigwall"
 	action_background_icon_state = "bg_mime"
-	large = TRUE
 
 /obj/effect/proc_holder/spell/forcewall/mime/Click()
 	if(usr && usr.mind)
@@ -93,9 +92,9 @@
 	desc = "Shoot lethal, silencing bullets out of your fingers! 3 bullets available per cast. Use your fingers to holster them manually."
 	school = "mime"
 	panel = "Mime"
-	clothes_req = 0
-	charge_max = 300
-	human_req = 1
+	clothes_req = FALSE
+	base_cooldown = 30 SECONDS
+	human_req = TRUE
 
 	action_icon_state = "fingergun"
 	action_background_icon_state = "bg_mime"
@@ -118,7 +117,7 @@
 // Mime Spellbooks
 
 /obj/item/spellbook/oneuse/mime
-	spell = /obj/effect/proc_holder/spell/aoe_turf/conjure/build/mime_wall
+	spell = /obj/effect/proc_holder/spell/aoe/conjure/build/mime_wall
 	spellname = "Invisible Wall"
 	name = "Miming Manual : "
 	desc = "It contains various pictures of mimes mid-performance, aswell as some illustrated tutorials."
@@ -144,7 +143,7 @@
 	to_chat(user, "<span class='notice'>You flip through the pages. Nothing of interest to you.</span>")
 
 /obj/item/spellbook/oneuse/mime/onlearned(mob/user)
-	used = 1
+	used = TRUE
 	if(!locate(/obj/effect/proc_holder/spell/mime/speak) in user.mind.spell_list) //add vow of silence if not known by user
 		user.mind.AddSpell(new /obj/effect/proc_holder/spell/mime/speak)
 		to_chat(user, "<span class='notice'>You have learned how to use silence to improve your performance.</span>")

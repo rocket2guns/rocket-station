@@ -13,7 +13,7 @@
 	icon_dead = "morph_dead"
 	speed = 1.5
 	a_intent = INTENT_HARM
-	stop_automated_movement = 1
+	stop_automated_movement = TRUE
 	status_flags = CANPUSH
 	pass_flags = PASSTABLE
 	move_resist = MOVE_FORCE_STRONG // Fat being
@@ -31,7 +31,7 @@
 	see_in_dark = 8
 	lighting_alpha = LIGHTING_PLANE_ALPHA_MOSTLY_INVISIBLE
 	vision_range = 1 // Only attack when target is close
-	wander = 0
+	wander = FALSE
 	attacktext = "glomps"
 	attack_sound = 'sound/effects/blobattack.ogg'
 	butcher_results = list(/obj/item/reagent_containers/food/snacks/meat/slab = 2)
@@ -76,7 +76,7 @@
 	real_name = "magical morph"
 	desc = "A revolting, pulsating pile of flesh. This one looks somewhat.. magical."
 
-/mob/living/simple_animal/hostile/morph/wizard/New()
+/mob/living/simple_animal/hostile/morph/wizard/Initialize(mapload)
 	. = ..()
 	AddSpell(new /obj/effect/proc_holder/spell/smoke)
 	AddSpell(new /obj/effect/proc_holder/spell/forcewall)
@@ -174,7 +174,7 @@
 	ambush_prepared = TRUE
 	to_chat(src, "<span class='sinister'>You are ready to ambush any unsuspected target. Your next attack will hurt a lot more and weaken the target! Moving will break your focus. Standing still will perfect your disguise.</span>")
 	apply_status_effect(/datum/status_effect/morph_ambush)
-	RegisterSignal(src, COMSIG_MOVABLE_MOVED, .proc/on_move)
+	RegisterSignal(src, COMSIG_MOVABLE_MOVED, PROC_REF(on_move))
 
 /mob/living/simple_animal/hostile/morph/proc/failed_ambush()
 	ambush_prepared = FALSE
@@ -283,7 +283,7 @@
 		if(ambush_prepared)
 			ambush_attack(L)
 			return TRUE // No double attack
-	else if(istype(target,/obj/item)) // Eat items just to be annoying
+	else if(isitem(target)) // Eat items just to be annoying
 		var/obj/item/I = target
 		if(!I.anchored)
 			try_eat(I)

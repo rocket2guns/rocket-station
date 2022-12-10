@@ -19,7 +19,7 @@
 	var/grille_type
 	var/broken_type = /obj/structure/grille/broken
 	var/shockcooldown = 0
-	var/my_shockcooldown = 1 SECONDS
+	var/my_shockcooldown = 2 SECONDS
 
 /obj/structure/grille/detailed_examine()
 	return "A powered and knotted wire underneath this will cause the grille to shock anyone not wearing insulated gloves.<br>\
@@ -50,9 +50,9 @@
 
 /obj/structure/grille/take_damage(damage_amount, damage_type = BRUTE, damage_flag = 0, sound_effect = 1, attack_dir)
 	. = ..()
-	update_icon()
+	update_icon(UPDATE_ICON_STATE)
 
-/obj/structure/grille/update_icon()
+/obj/structure/grille/update_icon_state()
 	if(QDELETED(src) || broken)
 		return
 
@@ -118,7 +118,7 @@
 		else
 			return !density
 
-/obj/structure/grille/CanAStarPass(ID, dir, caller)
+/obj/structure/grille/CanPathfindPass(obj/item/card/id/ID, dir, caller, no_id = FALSE)
 	. = !density
 	if(ismovable(caller))
 		var/atom/movable/mover = caller
@@ -156,7 +156,7 @@
 	deconstruct()
 
 /obj/structure/grille/screwdriver_act(mob/user, obj/item/I)
-	if(!(anchored || istype(loc, /turf/simulated) || locate(/obj/structure/lattice) in get_turf(src)))
+	if(!(anchored || issimulatedturf(loc) || locate(/obj/structure/lattice) in get_turf(src)))
 		return
 	. = TRUE
 	if(shock(user, 90))
@@ -271,9 +271,9 @@
 
 /obj/structure/grille/broken // Pre-broken grilles for map placement
 	icon_state = "brokengrille"
-	density = 0
+	density = FALSE
 	obj_integrity = 20
-	broken = 1
+	broken = TRUE
 	rods_amount = 1
 	rods_broken = 0
 	grille_type = /obj/structure/grille

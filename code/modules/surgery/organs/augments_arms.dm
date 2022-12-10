@@ -19,11 +19,11 @@
 	if(ispath(holder))
 		holder = new holder(src)
 
-	update_icon()
+	update_icon(UPDATE_ICON_STATE)
 	slot = parent_organ + "_device"
 	items_list = contents.Copy()
 
-/obj/item/organ/internal/cyberimp/arm/update_icon()
+/obj/item/organ/internal/cyberimp/arm/update_icon_state()
 	if(parent_organ == "r_arm")
 		transform = null
 	else // Mirroring the icon
@@ -43,7 +43,7 @@
 		parent_organ = "r_arm"
 	slot = parent_organ + "_device"
 	to_chat(user, "<span class='notice'>You modify [src] to be installed on the [parent_organ == "r_arm" ? "right" : "left"] arm.</span>")
-	update_icon()
+	update_icon(UPDATE_ICON_STATE)
 
 
 /obj/item/organ/internal/cyberimp/arm/remove(mob/living/carbon/M, special = 0)
@@ -51,7 +51,7 @@
 	. = ..()
 
 /obj/item/organ/internal/cyberimp/arm/emag_act()
-	return 0
+	return FALSE
 
 /obj/item/organ/internal/cyberimp/arm/emp_act(severity)
 	if(emp_proof)
@@ -149,7 +149,7 @@
 	var/list/choices = list()
 	for(var/obj/I in items_list)
 		choices["[I.name]"] = image(icon = I.icon, icon_state = I.icon_state)
-	var/choice = show_radial_menu(user, src, choices, custom_check = CALLBACK(src, .proc/check_menu, user))
+	var/choice = show_radial_menu(user, src, choices, custom_check = CALLBACK(src, PROC_REF(check_menu), user))
 	if(!check_menu(user))
 		return
 	var/obj/item/selected
@@ -364,7 +364,7 @@
 			if(H.nutrition >= NUTRITION_LEVEL_WELL_FED)
 				to_chat(user, "<span class='warning'>You are already fully charged!</span>")
 			else
-				INVOKE_ASYNC(src, .proc/powerdraw_loop, A, H)
+				INVOKE_ASYNC(src, PROC_REF(powerdraw_loop), A, H)
 		else
 			to_chat(user, "<span class='warning'>There is no charge to draw from that APC.</span>")
 	else
@@ -380,7 +380,7 @@
 		if(A.cell.charge == 0)
 			to_chat(H, "<span class='warning'>\The [A] has no more charge.</span>")
 			break
-		A.charging = 1
+		A.charging = APC_IS_CHARGING
 		if(A.cell.charge >= 500)
 			H.adjust_nutrition(50)
 			A.cell.charge -= 500

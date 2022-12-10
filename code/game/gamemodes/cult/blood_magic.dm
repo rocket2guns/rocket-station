@@ -144,7 +144,7 @@
 
 /datum/action/innate/cult/blood_spell/stun
 	name = "Stun"
-	desc = "Empowers your hand to stun and mute a victim on contact."
+	desc = "Will knock down and mute a victim on contact. Strike them with a cult blade to complete the invocation, stunning them and extending the mute."
 	button_icon_state = "stun"
 	magic_path = /obj/item/melee/blood_magic/stun
 	health_cost = 10
@@ -158,7 +158,7 @@
 
 /datum/action/innate/cult/blood_spell/emp
 	name = "Electromagnetic Pulse"
-	desc = "Channel an electromagnetic pulse inside your body, then release it, affecting nearby non-cultists. <b>The pulse will still affect you.</b>"
+	desc = "Releases an Electromagnetic Pulse, affecting nearby non-cultists. <b>The pulse will still affect you.</b>"
 	button_icon_state = "emp"
 	health_cost = 10
 	invocation = "Ta'gh fara'qha fel d'amar det!"
@@ -186,7 +186,7 @@
 	owner.visible_message("<span class='warning'>[owner]'s body flashes a bright blue!</span>", \
 						 "<span class='cultitalic'>You speak the cursed words, channeling an electromagnetic pulse from your body.</span>")
 	owner.emp_act(2)
-	INVOKE_ASYNC(GLOBAL_PROC, /proc/empulse, owner, 2, 5, TRUE, "cult")
+	INVOKE_ASYNC(GLOBAL_PROC, GLOBAL_PROC_REF(empulse), owner, 2, 5, TRUE, "cult")
 	owner.whisper(invocation)
 	charges--
 	if(charges <= 0)
@@ -235,7 +235,7 @@
 
 /datum/action/innate/cult/blood_spell/equipment
 	name = "Summon Equipment"
-	desc = "Allows you to empower your hand to summon combat gear onto a cultist you touch, including cult armor, a cult bola, and a cult sword."
+	desc = "Empowers your hand to summon combat gear onto a cultist you touch, including cult armor into open slots, a cult bola, and a cult sword."
 	button_icon_state = "equip"
 	magic_path = /obj/item/melee/blood_magic/armor
 
@@ -339,7 +339,7 @@
 		button_icon_state = "veiling"
 	if(charges <= 0)
 		qdel(src)
-	desc = base_desc
+	desc = "[revealing ? "Reveals" : "Conceals"] nearby cult structures, airlocks, and runes."
 	desc += "<br><b><u>Has [charges] use\s remaining</u></b>."
 	UpdateButtonIcon()
 
@@ -424,7 +424,7 @@
 //stun
 /obj/item/melee/blood_magic/stun
 	name = "Stunning Aura"
-	desc = "Will stun and mute a victim on contact."
+	desc = "Will knock down and mute a victim on contact. Strike them with a cult blade to complete the invocation, stunning them and extending the mute."
 	color = RUNE_COLOR_RED
 	invocation = "Fuu ma'jin!"
 
@@ -447,8 +447,10 @@
 							   "<span class='userdanger'>Your holy weapon absorbs the blinding light!</span>")
 	else
 		to_chat(user, "<span class='cultitalic'>In a brilliant flash of red, [L] falls to the ground!</span>")
-		// These are in life cycles, so double the time that's stated.
-		L.Weaken(10 SECONDS)
+
+		L.KnockDown(10 SECONDS)
+		L.adjustStaminaLoss(60)
+		L.apply_status_effect(STATUS_EFFECT_CULT_STUN)
 		L.flash_eyes(1, TRUE)
 		if(issilicon(target))
 			var/mob/living/silicon/S = L
@@ -459,6 +461,8 @@
 			C.Stuttering(16 SECONDS)
 			C.CultSlur(20 SECONDS)
 			C.Jitter(16 SECONDS)
+			to_chat(user, "<span class='boldnotice'>Stun mark applied! Stab them with a dagger, sword or blood spear to stun them fully!</span>")
+	user.do_attack_animation(target)
 	uses--
 	..()
 
@@ -513,7 +517,7 @@
 
 	var/turf/origin = get_turf(teleportee)
 	var/turf/destination = get_turf(actual_selected_rune)
-	INVOKE_ASYNC(actual_selected_rune, /obj/effect/rune/.proc/teleport_effect, teleportee, origin, destination)
+	INVOKE_ASYNC(actual_selected_rune, TYPE_PROC_REF(/obj/effect/rune, teleport_effect), teleportee, origin, destination)
 
 	if(is_mining_level(user.z) && !is_mining_level(destination.z)) //No effect if you stay on lavaland
 		actual_selected_rune.handle_portal("lava")

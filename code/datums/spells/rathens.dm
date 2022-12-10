@@ -1,8 +1,8 @@
 /obj/effect/proc_holder/spell/rathens
 	name = "Rathen's Secret"
 	desc = "Summons a powerful shockwave around you that tears the appendix and limbs off of enemies."
-	charge_max = 500
-	clothes_req = 1
+	base_cooldown = 500
+	clothes_req = TRUE
 	invocation = "APPEN NATH!"
 	invocation_type = "shout"
 	cooldown_min = 200
@@ -16,7 +16,7 @@
 /obj/effect/proc_holder/spell/rathens/cast(list/targets, mob/user = usr)
 	for(var/mob/living/carbon/human/H in targets)
 		var/datum/effect_system/smoke_spread/s = new
-		s.set_up(5, 0, H)
+		s.set_up(5, FALSE, H)
 		s.start()
 		var/obj/item/organ/internal/appendix/A = H.get_int_organ(/obj/item/organ/internal/appendix)
 		if(A)

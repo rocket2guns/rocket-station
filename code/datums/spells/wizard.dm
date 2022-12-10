@@ -3,8 +3,8 @@
 	desc = "This spell fires several, slow moving, magic projectiles at nearby targets."
 
 	school = "evocation"
-	charge_max = 200
-	clothes_req = 1
+	base_cooldown = 200
+	clothes_req = TRUE
 	invocation = "FORTI GY AMA"
 	invocation_type = "shout"
 	cooldown_min = 60 //35 deciseconds reduction per rank
@@ -32,7 +32,7 @@
 	return T
 
 /obj/effect/proc_holder/spell/inflict_handler/magic_missile
-	amt_weakened = 3
+	amt_weakened = 6 SECONDS
 	sound = 'sound/magic/mm_hit.ogg'
 
 
@@ -41,8 +41,8 @@
 	desc = "This spell fires several, slow moving, magic bikehorns at nearby targets."
 
 	school = "evocation"
-	charge_max = 60
-	clothes_req = 0
+	base_cooldown = 60
+	clothes_req = FALSE
 	invocation = "HONK GY AMA"
 	invocation_type = "shout"
 	cooldown_min = 60 //35 deciseconds reduction per rank
@@ -72,7 +72,7 @@
 	return T
 
 /obj/effect/proc_holder/spell/inflict_handler/honk_missile
-	amt_weakened = 3
+	amt_weakened = 6 SECONDS
 	sound = 'sound/items/bikehorn.ogg'
 
 /obj/effect/proc_holder/spell/noclothes
@@ -88,12 +88,12 @@
 	desc = "This spell causes you to turn into a hulk and gain laser vision for a short while."
 
 	school = "transmutation"
-	charge_max = 400
-	clothes_req = 1
+	base_cooldown = 400
+	clothes_req = TRUE
 	invocation = "BIRUZ BENNAR"
 	invocation_type = "shout"
 	message = "<span class='notice'>You feel strong! You feel a pressure building behind your eyes!</span>"
-	centcom_cancast = 0
+	centcom_cancast = FALSE
 
 	traits = list(TRAIT_LASEREYES)
 	duration = 300
@@ -114,13 +114,13 @@
 	desc = "This spell spawns a cloud of choking smoke at your location and does not require wizard garb."
 
 	school = "conjuration"
-	charge_max = 120
-	clothes_req = 0
+	base_cooldown = 120
+	clothes_req = FALSE
 	invocation = "none"
 	invocation_type = "none"
 	cooldown_min = 20 //25 deciseconds reduction per rank
 
-	smoke_spread = 2
+	smoke_type = SMOKE_COUGHING
 	smoke_amt = 10
 
 	action_icon_state = "smoke"
@@ -131,8 +131,8 @@
 /obj/effect/proc_holder/spell/emplosion/disable_tech
 	name = "Disable Tech"
 	desc = "This spell disables all weapons, cameras and most other technology in range."
-	charge_max = 400
-	clothes_req = 1
+	base_cooldown = 400
+	clothes_req = TRUE
 	invocation = "NEC CANTIO"
 	invocation_type = "shout"
 	cooldown_min = 200 //50 deciseconds reduction per rank
@@ -147,20 +147,20 @@
 	desc = "This spell randomly teleports you a short distance."
 
 	school = "abjuration"
-	charge_max = 20
-	clothes_req = 1
+	base_cooldown = 20
+	clothes_req = TRUE
 	invocation = "none"
 	invocation_type = "none"
 	cooldown_min = 5 //4 deciseconds reduction per rank
 
 
-	smoke_spread = 1
+	smoke_type = SMOKE_HARMLESS
 	smoke_amt = 1
 
 	inner_tele_radius = 0
 	outer_tele_radius = 6
 
-	centcom_cancast = 0 //prevent people from getting to centcom
+	centcom_cancast = FALSE //prevent people from getting to centcom
 
 	action_icon_state = "blink"
 
@@ -175,15 +175,13 @@
 	desc = "This spell teleports you to a type of area of your selection."
 
 	school = "abjuration"
-	charge_max = 600
-	clothes_req = 1
+	base_cooldown = 600
+	clothes_req = TRUE
 	invocation = "SCYAR NILA"
 	invocation_type = "shout"
 	cooldown_min = 200 //100 deciseconds reduction per rank
 
-	smoke_spread = 1
 	smoke_amt = 5
-
 	action_icon_state = "spell_teleport"
 
 	sound1 = 'sound/magic/teleport_diss.ogg'
@@ -194,10 +192,10 @@
 
 /obj/effect/proc_holder/spell/forcewall
 	name = "Force Wall"
-	desc = "This spell creates a small unbreakable wall that only you can pass through, and does not need wizard garb. Lasts 30 seconds."
+	desc = "This spell creates a 3 tile wide unbreakable wall that only you can pass through, and does not need wizard garb. Lasts 30 seconds."
 
 	school = "transmutation"
-	charge_max = 100
+	base_cooldown = 100
 	clothes_req = FALSE
 	invocation = "TARCOL MINTI ZHERI"
 	invocation_type = "whisper"
@@ -205,35 +203,24 @@
 	action_icon_state = "shield"
 	cooldown_min = 50 //12 deciseconds reduction per rank
 	var/wall_type = /obj/effect/forcefield/wizard
-	var/large = FALSE
 
 /obj/effect/proc_holder/spell/forcewall/create_new_targeting()
 	return new /datum/spell_targeting/self
 
 /obj/effect/proc_holder/spell/forcewall/cast(list/targets, mob/user = usr)
 	new wall_type(get_turf(user), user)
-	if(large) //Extra THICK
-		if(user.dir == SOUTH || user.dir == NORTH)
-			new wall_type(get_step(user, EAST), user)
-			new wall_type(get_step(user, WEST), user)
-		else
-			new wall_type(get_step(user, NORTH), user)
-			new wall_type(get_step(user, SOUTH), user)
+	if(user.dir == SOUTH || user.dir == NORTH)
+		new wall_type(get_step(user, EAST), user)
+		new wall_type(get_step(user, WEST), user)
+	else
+		new wall_type(get_step(user, NORTH), user)
+		new wall_type(get_step(user, SOUTH), user)
 
-/obj/effect/proc_holder/spell/forcewall/greater
-	name = "Greater Force Wall"
-	desc = "Create a larger magical barrier that only you can pass through, but requires wizard garb. Lasts 30 seconds."
-
-	clothes_req = TRUE
-	invocation = "TARCOL GRANDI ZHERI"
-	invocation_type = "shout"
-	large = TRUE
-
-/obj/effect/proc_holder/spell/aoe_turf/conjure/timestop
+/obj/effect/proc_holder/spell/aoe/conjure/timestop
 	name = "Stop Time"
 	desc = "This spell stops time for everyone except for you, allowing you to move freely while your enemies and even projectiles are frozen."
-	charge_max = 500
-	clothes_req = 1
+	base_cooldown = 500
+	clothes_req = TRUE
 	invocation = "TOKI WO TOMARE"
 	invocation_type = "shout"
 	cooldown_min = 100
@@ -241,38 +228,30 @@
 	action_icon_state = "time"
 
 	summon_type = list(/obj/effect/timestop/wizard)
+	aoe_range = 0
 
-/obj/effect/proc_holder/spell/aoe_turf/conjure/timestop/create_new_targeting()
-	var/datum/spell_targeting/aoe/turf/T = new()
-	T.range = 0
-	return T
-
-/obj/effect/proc_holder/spell/aoe_turf/conjure/carp
+/obj/effect/proc_holder/spell/aoe/conjure/carp
 	name = "Summon Carp"
 	desc = "This spell conjures a simple carp."
 
 	school = "conjuration"
-	charge_max = 1200
-	clothes_req = 1
+	base_cooldown = 1200
+	clothes_req = TRUE
 	invocation = "NOUK FHUNMM SACP RISSKA"
 	invocation_type = "shout"
 
 	summon_type = list(/mob/living/simple_animal/hostile/carp)
 
 	cast_sound = 'sound/magic/summon_karp.ogg'
+	aoe_range = 1
 
-/obj/effect/proc_holder/spell/aoe_turf/conjure/carp/create_new_targeting()
-	var/datum/spell_targeting/aoe/turf/T = new()
-	T.range = 1
-	return T
-
-/obj/effect/proc_holder/spell/aoe_turf/conjure/construct
+/obj/effect/proc_holder/spell/aoe/conjure/construct
 	name = "Artificer"
 	desc = "This spell conjures a construct which may be controlled by Shades"
 
 	school = "conjuration"
-	charge_max = 600
-	clothes_req = 0
+	base_cooldown = 600
+	clothes_req = FALSE
 	invocation = "none"
 	invocation_type = "none"
 
@@ -280,38 +259,30 @@
 
 	action_icon_state = "artificer"
 	cast_sound = 'sound/magic/summonitems_generic.ogg'
+	aoe_range = 0
 
-/obj/effect/proc_holder/spell/aoe_turf/conjure/construct/create_new_targeting()
-	var/datum/spell_targeting/aoe/turf/T = new()
-	T.range = 0
-	return T
-
-/obj/effect/proc_holder/spell/aoe_turf/conjure/creature
+/obj/effect/proc_holder/spell/aoe/conjure/creature
 	name = "Summon Creature Swarm"
 	desc = "This spell tears the fabric of reality, allowing horrific daemons to spill forth"
 
 	school = "conjuration"
-	charge_max = 1200
-	clothes_req = 0
+	base_cooldown = 1200
+	clothes_req = FALSE
 	invocation = "IA IA"
 	invocation_type = "shout"
 	summon_amt = 10
 
 	summon_type = list(/mob/living/simple_animal/hostile/creature)
 	cast_sound = 'sound/magic/summonitems_generic.ogg'
-
-/obj/effect/proc_holder/spell/aoe_turf/conjure/creature/create_new_targeting()
-	var/datum/spell_targeting/aoe/turf/T = new()
-	T.range = 3
-	return T
+	aoe_range = 3
 
 /obj/effect/proc_holder/spell/trigger/blind
 	name = "Blind"
 	desc = "This spell temporarily blinds a single person and does not require wizard garb."
 
 	school = "transmutation"
-	charge_max = 300
-	clothes_req = 0
+	base_cooldown = 300
+	clothes_req = FALSE
 	invocation = "STI KALY"
 	invocation_type = "whisper"
 	message = "<span class='notice'>Your eyes cry out in pain!</span>"
@@ -344,7 +315,7 @@
 	desc = "This spell fires a fireball at a target and does not require wizard garb."
 
 	school = "evocation"
-	charge_max = 60
+	base_cooldown = 60
 	clothes_req = FALSE
 	invocation = "ONI SOMA"
 	invocation_type = "shout"
@@ -364,7 +335,7 @@
 	C.range = 20
 	return C
 
-/obj/effect/proc_holder/spell/fireball/update_icon()
+/obj/effect/proc_holder/spell/fireball/update_icon_state()
 	if(!action)
 		return
 	action.button_icon_state = "fireball[active]"
@@ -379,16 +350,18 @@
 
 	var/obj/item/projectile/magic/fireball/FB = new fireball_type(user.loc)
 	FB.current = get_turf(user)
+	FB.original = target
+	FB.firer = user
 	FB.preparePixelProjectile(target, get_turf(target), user)
 	FB.fire()
 	user.newtonian_move(get_dir(U, T))
 
 	return TRUE
 
-/obj/effect/proc_holder/spell/aoe_turf/repulse
+/obj/effect/proc_holder/spell/aoe/repulse
 	name = "Repulse"
 	desc = "This spell throws everything around the user away."
-	charge_max = 400
+	base_cooldown = 400
 	clothes_req = TRUE
 	invocation = "GITTAH WEIGH"
 	invocation_type = "shout"
@@ -397,13 +370,14 @@
 	var/maxthrow = 5
 	var/sparkle_path = /obj/effect/temp_visual/gravpush
 	action_icon_state = "repulse"
+	aoe_range = 5
 
-/obj/effect/proc_holder/spell/aoe_turf/repulse/create_new_targeting()
-	var/datum/spell_targeting/aoe/turf/T = new()
-	T.range = 5
-	return T
+/obj/effect/proc_holder/spell/aoe/repulse/create_new_targeting()
+	var/datum/spell_targeting/aoe/turf/targeting = new()
+	targeting.range = aoe_range
+	return targeting
 
-/obj/effect/proc_holder/spell/aoe_turf/repulse/cast(list/targets, mob/user = usr, stun_amt = 4 SECONDS)
+/obj/effect/proc_holder/spell/aoe/repulse/cast(list/targets, mob/user = usr, stun_amt = 4 SECONDS)
 	var/list/thrownatoms = list()
 	var/atom/throwtarget
 	var/distfromcaster
@@ -437,8 +411,8 @@
 /obj/effect/proc_holder/spell/sacred_flame
 	name = "Sacred Flame"
 	desc = "Makes everyone around you more flammable, and lights yourself on fire."
-	charge_max = 60
-	clothes_req = 0
+	base_cooldown = 60
+	clothes_req = FALSE
 	invocation = "FI'RAN DADISKO"
 	invocation_type = "shout"
 	action_icon_state = "sacredflame"

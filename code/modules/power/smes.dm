@@ -131,17 +131,17 @@
 		C += PC.maxcharge
 	capacity = C / (15000) * 1e6
 
-/obj/machinery/power/smes/update_icon()
-	cut_overlays()
+/obj/machinery/power/smes/update_overlays()
+	. = ..()
 	if(stat & BROKEN)
 		return
 
-	add_overlay("smes-op[outputting ? 1 : 0]")
-	add_overlay("smes-oc[inputting ? 1 : 0]")
+	. += "smes-op[outputting ? 1 : 0]"
+	. += "smes-oc[inputting ? 1 : 0]"
 
-	var/clevel = chargedisplay()
-	if(clevel > 0)
-		add_overlay("smes-og[clevel]")
+	var/charge_level = chargedisplay()
+	if(charge_level > 0)
+		. += "smes-og[charge_level]"
 
 /obj/machinery/power/smes/attackby(obj/item/I, mob/user, params)
 	//opening using screwdriver
@@ -206,7 +206,7 @@
 			if(NORTHWEST, SOUTHWEST)
 				tempDir = WEST
 		var/turf/tempLoc = get_step(src, reverse_direction(tempDir))
-		if(istype(tempLoc, /turf/space))
+		if(isspaceturf(tempLoc))
 			to_chat(user, "<span class='warning'>You can't build a terminal on space.</span>")
 			return
 		else if(istype(tempLoc))
@@ -475,7 +475,7 @@
 				M.show_message("<span class='warning'>[src] is making strange noises!</span>", 3, "<span class='warning'>You hear sizzling electronics.</span>", 2)
 			sleep(10*pick(4,5,6,7,10,14))
 			var/datum/effect_system/smoke_spread/smoke = new
-			smoke.set_up(3, 0, src.loc)
+			smoke.set_up(3, FALSE, loc)
 			smoke.attach(src)
 			smoke.start()
 			explosion(src.loc, -1, 0, 1, 3, 1, 0)
@@ -489,7 +489,7 @@
 				emp_act(2)
 		if(prob(5)) //smoke only
 			var/datum/effect_system/smoke_spread/smoke = new
-			smoke.set_up(3, 0, src.loc)
+			smoke.set_up(3, FALSE, loc)
 			smoke.attach(src)
 			smoke.start()
 

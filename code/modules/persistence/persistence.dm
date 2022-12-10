@@ -48,6 +48,8 @@ GLOBAL_VAR_INIT(enable_sync, FALSE)
 /atom/serialize()
 	var/list/data = ..()
 	for(var/thing in vars_to_save())
+		if(vars[thing] != initial(vars[thing]))
+			data[thing] = vars[thing]
 		data[thing] = sanitizeText(vars[thing]) // Can't check initial() because it doesn't work on a list index
 	return data
 
@@ -135,9 +137,9 @@ GLOBAL_VAR_INIT(enable_sync, FALSE)
 		if(islist(thing))
 			list_to_object(thing, src)
 		else if(thing == null)
-			log_runtime(EXCEPTION("Null entry found in storage/deserialize."), src)
+			log_world(EXCEPTION("Null entry found in storage/deserialize."), src)
 		else
-			log_runtime(EXCEPTION("Non-list thing found in storage/deserialize."), src, list("Thing: [thing]"))
+			log_world(EXCEPTION("Non-list thing found in storage/deserialize."), src, list("Thing: [thing]"))
 
 /atom/proc/sync_to_db()
 	db_dirty = FALSE

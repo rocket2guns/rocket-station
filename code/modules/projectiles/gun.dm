@@ -2,7 +2,7 @@
 	name = "gun"
 	desc = "It's a gun. It's pretty terrible, though."
 	icon = 'icons/obj/guns/projectile.dmi'
-	icon_state = "detective"
+	icon_state = "revolver_bright"
 	item_state = "gun"
 	flags =  CONDUCT
 	slot_flags = SLOT_BELT
@@ -13,18 +13,18 @@
 	throw_range = 5
 	force = 5
 	origin_tech = "combat=1"
-	needs_permit = 1
+	needs_permit = TRUE
 	attack_verb = list("struck", "hit", "bashed")
 
 	var/fire_sound = "gunshot"
 	var/magin_sound = 'sound/weapons/gun_interactions/smg_magin.ogg'
 	var/magout_sound = 'sound/weapons/gun_interactions/smg_magout.ogg'
 	var/fire_sound_text = "gunshot" //the fire sound that shows in chat messages: laser blast, gunshot, etc.
-	var/suppressed = 0					//whether or not a message is displayed when fired
-	var/can_suppress = 0
-	var/can_unsuppress = 1
+	var/suppressed = FALSE					//whether or not a message is displayed when fired
+	var/can_suppress = FALSE
+	var/can_unsuppress = TRUE
 	var/recoil = 0						//boom boom shake the room
-	var/clumsy_check = 1
+	var/clumsy_check = TRUE
 	var/obj/item/ammo_casing/chambered = null
 	var/trigger_guard = TRIGGER_GUARD_NORMAL	//trigger guard on the weapon, hulks can't fire them with their big meaty fingers
 	var/sawn_desc = null				//description change if weapon is sawn-off
@@ -47,7 +47,7 @@
 	righthand_file = 'icons/mob/inhands/guns_righthand.dmi'
 
 	var/obj/item/flashlight/gun_light = null
-	var/can_flashlight = 0
+	var/can_flashlight = FALSE
 
 	var/can_bayonet = FALSE //if a bayonet can be added or removed if it already has one.
 	var/obj/item/kitchen/knife/bayonet
@@ -86,14 +86,17 @@
 		bayonet = list_to_object(data["bayonet"], src)
 		..()
 
-/obj/item/gun/New()
-	..()
+/obj/item/gun/Initialize(mapload)
+	. = ..()
 	if(gun_light)
 		verbs += /obj/item/gun/proc/toggle_gunlight
 	build_zooming()
 
 /obj/item/gun/Destroy()
 	QDEL_NULL(bayonet)
+	QDEL_NULL(chambered)
+	QDEL_NULL(azoom)
+	QDEL_NULL(gun_light)
 	return ..()
 
 /obj/item/gun/handle_atom_del(atom/A)
@@ -212,7 +215,7 @@
 			else if(G.can_trigger_gun(user))
 				bonus_spread += 24 * G.weapon_weight
 				loop_counter++
-				addtimer(CALLBACK(G, .proc/process_fire, target, user, 1, params, null, bonus_spread), loop_counter)
+				addtimer(CALLBACK(G, PROC_REF(process_fire), target, user, 1, params, null, bonus_spread), loop_counter)
 
 	process_fire(target,user,1,params, null, bonus_spread)
 
@@ -253,7 +256,7 @@
 					break
 			if(chambered)
 				sprd = round((pick(0.5, -0.5)) * (randomized_gun_spread + randomized_bonus_spread))
-				if(!chambered.fire(target, user, params, ,suppressed, zone_override, sprd))
+				if(!chambered.fire(target = target, user = user, params = params, distro = null, quiet = suppressed, zone_override = zone_override, spread = sprd, firer_source_atom = src))
 					shoot_with_empty_chamber(user)
 					break
 				else
@@ -275,7 +278,7 @@
 					to_chat(user, "<span class='warning'>[src] is lethally chambered! You don't want to risk harming anyone...</span>")
 					return
 			sprd = round((pick(1,-1)) * (randomized_gun_spread + randomized_bonus_spread))
-			if(!chambered.fire(target, user, params, , suppressed, zone_override, sprd))
+			if(!chambered.fire(target = target, user = user, params = params, distro = null, quiet = suppressed, zone_override = zone_override, spread = sprd, firer_source_atom = src))
 				shoot_with_empty_chamber(user)
 				return
 			else
@@ -334,7 +337,7 @@
 				check_for_sync()
 
 	if(unique_rename)
-		if(istype(I, /obj/item/pen))
+		if(is_pen(I))
 			var/t = rename_interactive(user, I, use_prefix = FALSE)
 			if(!isnull(t))
 				to_chat(user, "<span class='notice'>You name the gun [name]. Say hello to your new friend.</span>")
@@ -494,6 +497,10 @@
 	button_icon_state = "sniper_zoom"
 	var/obj/item/gun/gun = null
 
+/datum/action/toggle_scope_zoom/Destroy()
+	gun = null
+	return ..()
+
 /datum/action/toggle_scope_zoom/Trigger()
 	gun.zoom(owner)
 
@@ -546,7 +553,7 @@
 	if(zoomable)
 		azoom = new()
 		azoom.gun = src
-		RegisterSignal(src, COMSIG_ITEM_EQUIPPED, .proc/ZoomGrantCheck)
+		RegisterSignal(src, COMSIG_ITEM_EQUIPPED, PROC_REF(ZoomGrantCheck))
 
 /**
  * Proc which will be called when the gun receives the `COMSIG_ITEM_EQUIPPED` signal.

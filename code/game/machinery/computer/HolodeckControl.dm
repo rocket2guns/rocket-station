@@ -5,9 +5,8 @@
 	icon_screen = "holocontrol"
 	var/area/linkedholodeck = null
 	var/area/target = null
-	var/active = 0
+	var/active = FALSE
 	var/list/holographic_items = list()
-	var/damaged = 0
 	var/last_change = 0
 
 	light_color = LIGHT_COLOR_CYAN
@@ -165,14 +164,14 @@
 /obj/machinery/computer/HolodeckControl/emag_act(user as mob)
 	if(!emagged)
 		playsound(src.loc, 'sound/effects/sparks4.ogg', 75, 1)
-		emagged = 1
+		emagged = TRUE
 		to_chat(user, "<span class='notice'>You vastly increase projector power and override the safety and security protocols.</span>")
 		to_chat(user, "Warning.  Automatic shutoff and derezing protocols have been corrupted.  Please call Nanotrasen maintenance and do not use the simulator.")
 		log_game("[key_name(usr)] emagged the Holodeck Control Computer")
 		src.updateUsrDialog()
 
-/obj/machinery/computer/HolodeckControl/New()
-	..()
+/obj/machinery/computer/HolodeckControl/Initialize(mapload)
+	. = ..()
 	linkedholodeck = locate(/area/holodeck/alphadeck)
 	//if(linkedholodeck)
 	//	target = locate(/area/holodeck/source_emptycourt)
@@ -206,11 +205,10 @@
 
 	if(active)
 		if(!checkInteg(linkedholodeck))
-			damaged = 1
 			target = locate(/area/holodeck/source_plating)
 			if(target)
 				loadProgram(target)
-			active = 0
+			active = FALSE
 			for(var/mob/M in range(10,src))
 				M.show_message("The holodeck overloads!")
 
@@ -239,7 +237,7 @@
 
 /obj/machinery/computer/HolodeckControl/proc/checkInteg(area/A)
 	for(var/turf/T in A)
-		if(istype(T, /turf/space))
+		if(isspaceturf(T))
 			return 0
 
 	return 1
@@ -260,13 +258,13 @@
 							T.temperature = 5000
 							T.hotspot_expose(50000,50000,1)*/
 
-		active = 1
+		active = TRUE
 	else
 		for(var/item in holographic_items)
 			derez(item)
 		var/area/targetsource = locate(/area/holodeck/source_plating)
 		targetsource.copy_contents_to(linkedholodeck , 1)
-		active = 0
+		active = FALSE
 
 
 /obj/machinery/computer/HolodeckControl/proc/loadProgram(area/A)
@@ -280,7 +278,7 @@
 			return
 
 	last_change = world.time
-	active = 1
+	active = TRUE
 
 	for(var/item in holographic_items)
 		derez(item)
@@ -291,7 +289,7 @@
 	for(var/mob/living/simple_animal/hostile/carp/C in linkedholodeck)
 		qdel(C)
 
-	holographic_items = A.copy_contents_to(linkedholodeck , 1)
+	holographic_items = A.copy_contents_to(linkedholodeck , 1, perfect_copy = FALSE)
 
 	if(emagged)
 		for(var/obj/item/holo/H in linkedholodeck)
@@ -321,7 +319,7 @@
 
 	var/area/targetsource = locate(/area/holodeck/source_plating)
 	targetsource.copy_contents_to(linkedholodeck , 1)
-	active = 0
+	active = FALSE
 
 // Holographic Items!
 /turf/simulated/floor/holofloor/
@@ -345,9 +343,9 @@
 
 /turf/simulated/floor/holofloor/carpet/Initialize(mapload)
 	. = ..()
-	update_icon()
+	update_icon(UPDATE_ICON_STATE)
 
-/turf/simulated/floor/holofloor/carpet/update_icon()
+/turf/simulated/floor/holofloor/carpet/update_icon_state()
 	if(!..())
 		return 0
 	if(smoothing_flags & (SMOOTH_CORNERS|SMOOTH_BITMASK))
@@ -392,7 +390,7 @@
 /obj/structure/table/holotable/wood
 	name = "wooden table"
 	desc = "A square piece of wood standing on four wooden legs. It can not move."
-	icon = 'icons/obj/smooth_structures/wood_table.dmi'
+	icon = 'icons/obj/smooth_structures/tables/wood_table.dmi'
 	icon_state = "wood_table-0"
 	base_icon_state = "wood_table"
 	smoothing_groups = list(SMOOTH_GROUP_WOOD_TABLES) //Don't smooth with SMOOTH_GROUP_TABLES
@@ -413,10 +411,10 @@
 	icon = 'icons/obj/structures.dmi'
 	icon_state = "rwindow"
 	desc = "A window."
-	density = 1
+	density = TRUE
 	layer = 3.2//Just above doors
 	pressure_resistance = 4*ONE_ATMOSPHERE
-	anchored = 1.0
+	anchored = TRUE
 	flags = ON_BORDER
 
 /obj/structure/rack/holorack
@@ -424,6 +422,13 @@
 
 /obj/item/holo
 	damtype = STAMINA
+
+//override block check, we don't want to block anything that's not a holo object
+/obj/item/holo/hit_reaction(mob/living/carbon/human/owner, atom/movable/hitby)
+	if(!istype(hitby, /obj/item/holo))
+		return FALSE
+	else
+		return ..()
 
 /obj/item/holo/claymore
 	name = "claymore"
@@ -435,7 +440,11 @@
 	throwforce = 10
 	w_class = WEIGHT_CLASS_BULKY
 	attack_verb = list("attacked", "slashed", "stabbed", "sliced", "torn", "ripped", "diced", "cut")
-	block_chance = 50
+
+/obj/item/holo/claymore/Initialize(mapload)
+	. = ..()
+	AddComponent(/datum/component/parry, _stamina_constant = 2, _stamina_coefficient = 0.5, _parryable_attack_types = NON_PROJECTILE_ATTACKS)
+
 
 /obj/item/holo/claymore/blue
 	icon_state = "claymoreblue"
@@ -455,9 +464,12 @@
 	throw_range = 5
 	throwforce = 0
 	w_class = WEIGHT_CLASS_SMALL
-	armour_penetration = 50
-	block_chance = 50
-	var/active = 0
+	armour_penetration_percentage = 50
+	var/active = FALSE
+
+/obj/item/holo/esword/Initialize(mapload)
+	. = ..()
+	AddComponent(/datum/component/parry, _stamina_constant = 2, _stamina_coefficient = 0.5, _parryable_attack_types = NON_PROJECTILE_ATTACKS)
 
 /obj/item/holo/esword/green/New()
 	..()
@@ -492,75 +504,23 @@
 		w_class = WEIGHT_CLASS_SMALL
 		playsound(user, 'sound/weapons/saberoff.ogg', 20, 1)
 		to_chat(user, "<span class='notice'>[src] can now be concealed.</span>")
-	if(istype(user,/mob/living/carbon/human))
+	if(ishuman(user))
 		var/mob/living/carbon/human/H = user
 		H.update_inv_l_hand()
 		H.update_inv_r_hand()
 	add_fingerprint(user)
 	return
 
-//BASKETBALL OBJECTS
-/obj/item/beach_ball/holoball
-	icon = 'icons/obj/basketball.dmi'
-	icon_state = "basketball"
-	name = "basketball"
-	item_state = "basketball"
-	desc = "Here's your chance, do your dance at the Space Jam."
-	w_class = WEIGHT_CLASS_BULKY //Stops people from hiding it in their bags/pockets
-
-/obj/item/beach_ball/holoball/baseball
-	icon_state = "baseball"
-	name = "baseball"
-	item_state = "baseball"
-	desc = "Take me out to the ball game."
-
-/obj/structure/holohoop
-	name = "basketball hoop"
-	desc = "Boom, Shakalaka!"
-	icon = 'icons/obj/basketball.dmi'
-	icon_state = "hoop"
-	anchored = 1
-	density = 1
-	pass_flags = LETPASSTHROW
-
-/obj/structure/holohoop/attackby(obj/item/W as obj, mob/user as mob, params)
-	if(istype(W, /obj/item/grab) && get_dist(src,user)<2)
-		var/obj/item/grab/G = W
-		if(G.state<2)
-			to_chat(user, "<span class='warning'>You need a better grip to do that!</span>")
-			return
-		G.affecting.loc = src.loc
-		G.affecting.Weaken(10 SECONDS)
-		visible_message("<span class='warning'>[G.assailant] dunks [G.affecting] into [src]!</span>")
-		qdel(W)
-		return
-	else if(istype(W, /obj/item) && get_dist(src,user)<2)
-		user.drop_item(src)
-		visible_message("<span class='notice'>[user] dunks [W] into [src]!</span>")
-		return
-
-
-/obj/structure/holohoop/hitby(atom/movable/AM, skipcatch, hitpush, blocked, datum/thrownthing/throwingdatum)
-	if(isitem(AM) && !istype(AM,/obj/item/projectile))
-		if(prob(50))
-			AM.forceMove(get_turf(src))
-			visible_message("<span class='notice'>Swish! [AM] lands in [src].</span>")
-		else
-			visible_message("<span class='danger'>[AM] bounces off of [src]'s rim!</span>")
-			return ..()
-	else
-		return ..()
-
 /obj/machinery/readybutton
 	name = "Ready Declaration Device"
 	desc = "This device is used to declare ready. If all devices in an area are ready, the event will begin!"
 	icon = 'icons/obj/monitors.dmi'
 	icon_state = "auth_off"
-	var/ready = 0
+	var/ready = FALSE
 	var/area/currentarea = null
 	var/eventstarted = 0
 
-	anchored = 1.0
+	anchored = TRUE
 	use_power = IDLE_POWER_USE
 	idle_power_usage = 2
 	active_power_usage = 6
@@ -588,7 +548,7 @@
 
 	ready = !ready
 
-	update_icon()
+	update_icon(UPDATE_ICON_STATE)
 
 	var/numbuttons = 0
 	var/numready = 0
@@ -600,7 +560,7 @@
 	if(numbuttons == numready)
 		begin_event()
 
-/obj/machinery/readybutton/update_icon()
+/obj/machinery/readybutton/update_icon_state()
 	if(ready)
 		icon_state = "auth_on"
 	else

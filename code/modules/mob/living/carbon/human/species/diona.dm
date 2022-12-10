@@ -8,8 +8,7 @@
 	unarmed_type = /datum/unarmed_attack/diona
 	remains_type = /obj/effect/decal/cleanable/ash
 
-	burn_mod = 1.25
-	heatmod = 1.5
+	heatmod = 3
 	var/pod = FALSE //did they come from a pod? If so, they're stronger than normal Diona.
 
 	blurb = "Commonly referred to (erroneously) as 'plant people', the Dionaea are a strange space-dwelling collective \
@@ -26,6 +25,7 @@
 	clothing_flags = HAS_SOCKS
 	default_hair_colour = "#000000"
 	has_gender = FALSE
+	bodyflags = SHAVED
 	dietflags = DIET_HERB		//Diona regenerate nutrition in light and water, no diet necessary, but if they must, they eat other plants *scream
 	taste_sensitivity = TASTE_SENSITIVITY_DULL
 	skinned_type = /obj/item/stack/sheet/wood
@@ -65,7 +65,7 @@
 		"is pulling themselves apart!")
 
 /datum/species/diona/can_understand(mob/other)
-	if(istype(other, /mob/living/simple_animal/diona))
+	if(isnymph(other))
 		return 1
 	return 0
 
@@ -76,6 +76,9 @@
 /datum/species/diona/on_species_loss(mob/living/carbon/human/H)
 	. = ..()
 	H.clear_alert("nolight")
+
+	for(var/mob/living/simple_animal/diona/N in H.contents) // Let nymphs wiggle out
+		N.split()
 
 /datum/species/diona/handle_reagents(mob/living/carbon/human/H, datum/reagent/R)
 	if(R.id == "glyphosate" || R.id == "atrazine")
@@ -103,7 +106,6 @@
 			if(!pod && H.health <= 0)
 				return
 			H.adjustBruteLoss(-1)
-			H.adjustFireLoss(-1)
 			H.adjustToxLoss(-1)
 			H.adjustOxyLoss(-1)
 

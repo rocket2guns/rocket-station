@@ -101,7 +101,7 @@ GLOBAL_LIST_EMPTY(fax_blacklist)
 
 /obj/machinery/photocopier/faxmachine/emag_act(mob/user)
 	if(!emagged)
-		emagged = 1
+		emagged = TRUE
 		req_one_access = list()
 		to_chat(user, "<span class='notice'>The transmitters realign to an unknown source!</span>")
 	else
@@ -315,7 +315,7 @@ GLOBAL_LIST_EMPTY(fax_blacklist)
 	flick(receive_anim, src)
 
 	playsound(loc, 'sound/goonstation/machines/printer_dotmatrix.ogg', 50, 1)
-	addtimer(CALLBACK(src, .proc/print_fax, incoming), 2 SECONDS)
+	addtimer(CALLBACK(src, PROC_REF(print_fax), incoming), 2 SECONDS)
 	return TRUE
 
 /obj/machinery/photocopier/faxmachine/proc/print_fax(obj/item/incoming)

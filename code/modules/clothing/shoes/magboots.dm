@@ -4,7 +4,7 @@
 	icon_state = "magboots0"
 	origin_tech = "materials=3;magnets=4;engineering=4"
 	var/magboot_state = "magboots"
-	var/magpulse = 0
+	var/magpulse = FALSE
 	var/slowdown_active = 2
 	var/slowdown_passive = SHOES_SLOWDOWN
 	var/magpulse_name = "mag-pulse traction system"
@@ -284,8 +284,11 @@
 		return
 
 	var/atom/target = get_edge_target_turf(user, user.dir) //gets the user's direction
-
-	if(user.throw_at(target, jumpdistance, jumpspeed, spin = FALSE, diagonals_first = TRUE))
+	var/do_callback = FALSE
+	if(!user.flying)
+		user.flying = TRUE
+		do_callback = TRUE
+	if(user.throw_at(target, jumpdistance, jumpspeed, spin = FALSE, diagonals_first = TRUE, callback = do_callback ? VARSET_CALLBACK(user, flying, FALSE) : null))
 		playsound(src, 'sound/effects/stealthoff.ogg', 50, 1, 1)
 		user.visible_message("<span class='warning'>[usr] dashes forward into the air!</span>")
 		recharging_time = world.time + recharging_rate

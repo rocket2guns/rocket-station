@@ -7,6 +7,9 @@
 	var/in_use = FALSE // If we have a user using us, this will be set on. We will check if the user has stopped using us, and thus stop updating and LAGGING EVERYTHING!
 	var/damtype = "brute"
 	var/force = 0
+	// You can define armor as a list in datum definition (e.g. `armor = list("fire" = 80, "brute" = 10)`),
+	// which would be converted to armor datum during initialization.
+	// Setting `armor` to a list on an *existing* object would inevitably runtime. Use `getArmor()` instead.
 	var/datum/armor/armor
 	var/obj_integrity	//defaults to max_integrity
 	var/max_integrity = 500
@@ -15,6 +18,7 @@
 	var/damage_deflection = 0
 
 	var/resistance_flags = NONE // INDESTRUCTIBLE
+	var/custom_fire_overlay // Update_fire_overlay will check if a different icon state should be used
 
 	var/acid_level = 0 //how much acid is on that obj
 
@@ -69,6 +73,8 @@
 		armor = getArmor()
 	else if(!istype(armor, /datum/armor))
 		stack_trace("Invalid type [armor.type] found in .armor during /obj Initialize()")
+	if(sharp)
+		AddComponent(/datum/component/surgery_initiator)
 	check_for_sync()
 
 /obj/Topic(href, href_list, nowindow = FALSE, datum/ui_state/state = GLOB.default_state)
@@ -98,7 +104,6 @@
 			STOP_PROCESSING(SSobj, src) // TODO: Have a processing bitflag to reduce on unnecessary loops through the processing lists
 		else
 			STOP_PROCESSING(SSfastprocess, src)
-	SStgui.close_uis(src)
 	LAZYREMOVE(GLOB.changed_objects,src)
 	del_from_db()
 	return ..()
@@ -155,7 +160,7 @@
 			if((M.client && M.machine == src))
 				is_in_use = TRUE
 				src.attack_hand(M)
-		if(istype(usr, /mob/living/silicon/ai) || istype(usr, /mob/living/silicon/robot))
+		if(isAI(usr) || isrobot(usr))
 			if(!(usr in nearby))
 				if(usr.client && usr.machine==src) // && M.machine == src is omitted because if we triggered this by using the dialog, it doesn't matter if our machine changed in between triggering it and this - the dialog is probably still supposed to refresh.
 					is_in_use = TRUE
@@ -163,7 +168,7 @@
 
 		// check for TK users
 
-		if(istype(usr, /mob/living/carbon/human))
+		if(ishuman(usr))
 			if(istype(usr.l_hand, /obj/item/tk_grab) || istype(usr.r_hand, /obj/item/tk_grab/))
 				if(!(usr in nearby))
 					if(usr.client && usr.machine == src)
@@ -188,9 +193,6 @@
 /obj/proc/interact(mob/user)
 	return
 
-/obj/proc/update_icon()
-	SEND_SIGNAL(src, COMSIG_OBJ_UPDATE_ICON)
-
 /mob/proc/unset_machine()
 	if(machine)
 		UnregisterSignal(machine, COMSIG_PARENT_QDELETING)
@@ -207,7 +209,7 @@
 	src.machine = O
 	if(istype(O))
 		O.in_use = TRUE
-		RegisterSignal(O, COMSIG_PARENT_QDELETING, .proc/unset_machine)
+		RegisterSignal(O, COMSIG_PARENT_QDELETING, PROC_REF(unset_machine))
 
 /obj/item/proc/updateSelfDialog()
 	var/mob/M = src.loc
@@ -348,9 +350,6 @@ a {
 /obj/proc/container_resist(mob/living)
 	return
 
-/obj/proc/CanAStarPass(ID, dir, caller)
-	. = !density
-
 /obj/proc/on_mob_move(dir, mob/user)
 	return
 
@@ -385,6 +384,15 @@ a {
 
 /obj/proc/cult_reveal() //Called by cult reveal spell and chaplain's bible
 	return
+
+/// Set whether the item should be sharp or not
+/obj/proc/set_sharpness(new_sharp_val)
+	if(sharp == new_sharp_val)
+		return
+	sharp = new_sharp_val
+	SEND_SIGNAL(src, COMSIG_ATOM_UPDATE_SHARPNESS)
+	if(!sharp && new_sharp_val)
+		AddComponent(/datum/component/surgery_initiator)
 
 
 /obj/proc/force_eject_occupant(mob/target)

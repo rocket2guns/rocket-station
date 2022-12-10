@@ -26,7 +26,7 @@ By design, d1 is the smallest direction and d2 is the highest
 
 /obj/structure/cable
 	level = 1
-	anchored = 1
+	anchored = TRUE
 	on_blueprints = TRUE
 	var/datum/powernet/powernet
 	name = "power cable"
@@ -35,12 +35,15 @@ By design, d1 is the smallest direction and d2 is the highest
 	icon_state = "0-1"
 	var/d1 = 0
 	var/d2 = 1
-	plane = FLOOR_PLANE
-	layer = WIRE_LAYER //Just below unary stuff, which is at 2.45 and above pipes, which are at 2.4
 	color = COLOR_RED
 
+	//The following vars are set here for the benefit of mapping - they are reset when the cable is spawned
+	alpha = 128	//is set to 255 when spawned
+	plane = GAME_PLANE //is set to FLOOR_PLANE when spawned
+	layer = LOW_OBJ_LAYER //isset to WIRE_LAYER when spawned
+
 	serialize()
-		updateicon()
+		update_icon_state()
 		var/list/data = ..()
 		data["d1"] = d1
 		data["d2"] = d2
@@ -74,6 +77,9 @@ By design, d1 is the smallest direction and d2 is the highest
 
 /obj/structure/cable/Initialize(mapload)
 	. = ..()
+	plane = FLOOR_PLANE //move it down so ambient occlusion ignores it
+	alpha = 255 //make it not semi-transparent
+	layer = WIRE_LAYER //put it on the right level
 
 	// ensure d1 & d2 reflect the icon_state for entering and exiting cable
 	var/dash = findtext(icon_state, "-")
@@ -113,14 +119,13 @@ By design, d1 is the smallest direction and d2 is the highest
 
 	if(level == 1 && isturf(loc))
 		invisibility = i ? INVISIBILITY_MAXIMUM : 0
-	updateicon()
+	update_icon()
 
-/obj/structure/cable/proc/updateicon()
+/obj/structure/cable/update_icon_state()
 	if(invisibility)
 		icon_state = "[d1]-[d2]-f"
 	else
 		icon_state = "[d1]-[d2]"
-
 
 ////////////////////////////////////////////
 // Power related
@@ -454,7 +459,6 @@ By design, d1 is the smallest direction and d2 is the highest
 
 	P_list += power_list(loc, src, d1, 0, cable_only = 1)//... and on turf
 
-	check_for_sync()
 
 	if(P_list.len == 0)//if nothing in both list, then the cable was a lone cable, just delete it and its powernet
 		powernet.remove_cable(src)
@@ -472,7 +476,7 @@ By design, d1 is the smallest direction and d2 is the highest
 
 	// queue it to rebuild
 	SSmachines.deferred_powernet_rebuilds += O
-//	addtimer(CALLBACK(O, .proc/auto_propogate_cut_cable, O), 0) //so we don't rebuild the network X times when singulo/explosion destroys a line of X cables
+//	addtimer(CALLBACK(O, PROC_REF(auto_propogate_cut_cable), O), 0) //so we don't rebuild the network X times when singulo/explosion destroys a line of X cables
 
 	// Disconnect machines connected to nodes
 	if(d1 == 0) // if we cut a node (O-X) cable
@@ -489,10 +493,7 @@ By design, d1 is the smallest direction and d2 is the highest
 // Definitions
 ////////////////////////////////
 
-GLOBAL_LIST_INIT(cable_coil_recipes, list (
-	new/datum/stack_recipe/cable_restraints("cable restraints", /obj/item/restraints/handcuffs/cable, 15), \
-	new/datum/stack_recipe("power terminal", /obj/machinery/power/terminal, 15, one_per_turf = 1, on_floor = 1) \
-))
+GLOBAL_LIST_INIT(cable_coil_recipes, list (new/datum/stack_recipe/cable_restraints("cable restraints", /obj/item/restraints/handcuffs/cable, 15)))
 
 /obj/item/stack/cable_coil
 	name = "cable coil"
@@ -505,12 +506,11 @@ GLOBAL_LIST_INIT(cable_coil_recipes, list (
 	max_amount = MAXCOIL
 	merge_type = /obj/item/stack/cable_coil // This is here to let its children merge between themselves
 	color = COLOR_RED
-	desc = "A coil of power cable."
 	throwforce = 10
 	w_class = WEIGHT_CLASS_SMALL
 	throw_speed = 2
 	throw_range = 5
-	materials = list(MAT_METAL=10, MAT_GLASS=5)
+	materials = list(MAT_METAL = 15, MAT_GLASS = 10)
 	flags = CONDUCT
 	slot_flags = SLOT_BELT
 	item_state = "coil"
@@ -527,7 +527,6 @@ GLOBAL_LIST_INIT(cable_coil_recipes, list (
 
 /obj/item/stack/cable_coil/New(loc, length = MAXCOIL, paramcolor = null)
 	..()
-	amount = length
 	if(paramcolor)
 		color = paramcolor
 	pixel_x = rand(-2,2)
@@ -547,7 +546,7 @@ GLOBAL_LIST_INIT(cable_coil_recipes, list (
 
 		if(!S)
 			return
-		if(!S.is_robotic() || user.a_intent != INTENT_HELP || S.open == 2)
+		if(!S.is_robotic() || user.a_intent != INTENT_HELP || S.open == ORGAN_SYNTHETIC_OPEN)
 			return ..()
 
 		if(S.burn_dam > ROBOLIMB_SELF_REPAIR_CAP)
@@ -597,19 +596,22 @@ GLOBAL_LIST_INIT(cable_coil_recipes, list (
 	C.color = color
 	return C
 
-/obj/item/stack/cable_coil/update_icon()
+/obj/item/stack/cable_coil/update_name()
+	. = ..()
+	if(amount > 2)
+		name = "cable coil"
+	else
+		name = "cable piece"
+
+/obj/item/stack/cable_coil/update_icon_state()
 	if(!color)
 		color = pick(COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_ORANGE, COLOR_WHITE, COLOR_PINK, COLOR_YELLOW, COLOR_CYAN)
 	if(amount == 1)
 		icon_state = "coil1"
-		name = "cable piece"
 	else if(amount == 2)
 		icon_state = "coil2"
-		name = "cable piece"
 	else
 		icon_state = "coil"
-		name = "cable coil"
-	..()
 
 /obj/item/stack/cable_coil/proc/update_wclass()
 	if(amount == 1)
@@ -625,7 +627,7 @@ GLOBAL_LIST_INIT(cable_coil_recipes, list (
 		else if(get_amount() == 2)
 			. += "A piece of power cable."
 		else
-			. += "A coil of power cable. There are [get_amount()] lengths of cable in the coil."
+			. += "A coil of power cables."
 
 // Items usable on a cable coil :
 //   - Wirecutters : cut them duh !
@@ -696,7 +698,7 @@ GLOBAL_LIST_INIT(cable_coil_recipes, list (
 	C.d1 = 0 //it's a O-X node cable
 	C.d2 = dirn
 	C.add_fingerprint(user)
-	C.updateicon()
+	C.update_icon()
 
 	//create a new powernet with the cable, if needed it will be merged later
 	var/datum/powernet/PN = new()
@@ -714,8 +716,6 @@ GLOBAL_LIST_INIT(cable_coil_recipes, list (
 		if(prob(50)) //fail
 			new /obj/item/stack/cable_coil(get_turf(C), 1, paramcolor = C.color)
 			C.deconstruct()
-
-	C.check_for_sync()
 
 	return C
 
@@ -780,8 +780,6 @@ GLOBAL_LIST_INIT(cable_coil_recipes, list (
 			if(NC.shock(user, 50))
 				if(prob(50)) //fail
 					NC.deconstruct()
-
-			NC.check_for_sync()
 			return
 
 	// exisiting cable doesn't point at our position, so see if it's a stub
@@ -810,7 +808,7 @@ GLOBAL_LIST_INIT(cable_coil_recipes, list (
 		C.d2 = nd2
 
 		C.add_fingerprint()
-		C.updateicon()
+		C.update_icon()
 
 
 		C.mergeConnectedNetworks(C.d1) //merge the powernets...
@@ -830,7 +828,6 @@ GLOBAL_LIST_INIT(cable_coil_recipes, list (
 				C.deconstruct()
 				return
 
-		C.check_for_sync()
 		C.denode()// this call may have disconnected some cables that terminated on the centre of the turf, if so split the powernets.
 		return
 
@@ -846,8 +843,15 @@ GLOBAL_LIST_INIT(cable_coil_recipes, list (
 	src.amount = rand(1,2)
 	pixel_x = rand(-2,2)
 	pixel_y = rand(-2,2)
-	update_icon()
+	update_appearance(UPDATE_NAME|UPDATE_ICON_STATE)
 	update_wclass()
+
+
+/obj/item/stack/cable_coil/five
+
+// Passes '5' to the parent as `new_amount`, so 5 coils are created.
+/obj/item/stack/cable_coil/five/New(loc, new_amount = 5, merge = TRUE, paramcolor = null)
+	..()
 
 /obj/item/stack/cable_coil/yellow
 	color = COLOR_YELLOW
@@ -871,7 +875,7 @@ GLOBAL_LIST_INIT(cable_coil_recipes, list (
 	color = COLOR_WHITE
 
 /obj/item/stack/cable_coil/random/New()
-	color = pick(COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_WHITE, COLOR_PINK, COLOR_YELLOW, COLOR_CYAN)
+	color = pick(COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_WHITE, COLOR_PINK, COLOR_YELLOW, COLOR_CYAN, COLOR_ORANGE)
 	..()
 
 /obj/item/stack/cable_coil/proc/cable_color(colorC)
@@ -892,7 +896,7 @@ GLOBAL_LIST_INIT(cable_coil_recipes, list (
 	energy_type = /datum/robot_energy_storage/cable
 	is_cyborg = TRUE
 
-/obj/item/stack/cable_coil/cyborg/update_icon()
+/obj/item/stack/cable_coil/cyborg/update_icon_state()
 	return // icon_state should always be a full cable
 
 /obj/item/stack/cable_coil/cyborg/attack_self(mob/user)

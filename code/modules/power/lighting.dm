@@ -59,11 +59,11 @@
 	if(get_dist(user, src) <= 2)
 		switch(stage)
 			if(1)
-				. += "It's an empty frame."
+				. += "<span class='notice'>It's an empty frame <b>bolted</b> to the wall. It needs to be <i>wired</i>.</span>"
 			if(2)
-				. += "It's wired."
+				. += "<span class='notice'>The frame is <b>wired</b>, but the casing's cover is <i>unscrewed</i>.</span>"
 			if(3)
-				. += "The casing is closed."
+				. += "<span class='notice'>The casing is <b>screwed</b> shut.</span>"
 
 /obj/machinery/light_construct/wrench_act(mob/living/user, obj/item/I)
 	. = TRUE
@@ -181,7 +181,7 @@
 	var/base_state = "tube" // Base description and icon_state
 	icon_state = "tube1"
 	desc = "A lighting fixture."
-	anchored = 1
+	anchored = TRUE
 	layer = 5
 	max_integrity = 100
 	use_power = ACTIVE_POWER_USE
@@ -206,6 +206,8 @@
 	var/status = LIGHT_OK
 	/// Is the light currently flickering?
 	var/flickering = FALSE
+	/// Was this light extinguished with an antag ability? Used to ovveride flicker events
+	var/extinguished = FALSE
 
 	/// Item type of the light bulb
 	var/light_type = /obj/item/light/tube
@@ -216,7 +218,7 @@
 	/// Is the light rigged to explode?
 	var/rigged = FALSE
 	/// Materials the light is made of
-	var/lightmaterials = list(MAT_GLASS=100)
+	var/lightmaterials = list(MAT_GLASS = 200)
 
 	/// Currently in night shift mode?
 	var/nightshift_enabled = FALSE
@@ -309,11 +311,10 @@
 //		A.update_lights()
 	return ..()
 
-/obj/machinery/light/update_icon()
-
+/obj/machinery/light/update_icon_state()
 	switch(status)		// set icon_states
 		if(LIGHT_OK)
-			if(emergency_mode)
+			if(emergency_mode || fire_mode)
 				icon_state = "[base_state]_emergency"
 			else
 				icon_state = "[base_state][on]"
@@ -326,7 +327,17 @@
 		if(LIGHT_BROKEN)
 			icon_state = "[base_state]-broken"
 			on = FALSE
-	return
+
+/obj/machinery/light/update_overlays()
+	. = ..()
+	underlays.Cut()
+
+	if(status != LIGHT_OK || !on || !turning_on)
+		return
+	if(nightshift_enabled || emergency_mode || fire_mode || turning_on)
+		underlays += emissive_appearance(icon, "[base_state]_emergency_lightmask")
+	else
+		underlays += emissive_appearance(icon, "[base_state]_lightmask")
 
 /**
   * Updates the light's 'on' state and power consumption based on [/obj/machinery/light/var/on].
@@ -346,11 +357,12 @@
 	if(fire_mode)
 		set_emergency_lights()
 	if(on) // Turning on
+		extinguished = FALSE
 		if(instant)
 			_turn_on(trigger, play_sound)
 		else if(!turning_on)
 			turning_on = TRUE
-			addtimer(CALLBACK(src, .proc/_turn_on, trigger, play_sound), rand(LIGHT_ON_DELAY_LOWER, LIGHT_ON_DELAY_UPPER))
+			addtimer(CALLBACK(src, PROC_REF(_turn_on), trigger, play_sound), rand(LIGHT_ON_DELAY_LOWER, LIGHT_ON_DELAY_UPPER))
 	else if(!turned_off())
 		set_emergency_lights()
 	else // Turning off
@@ -398,7 +410,6 @@
 		return // Nothing's changed here
 
 	switchcount++
-	update_icon()
 	if(trigger && (status == LIGHT_OK))
 		if(rigged)
 			log_admin("LOG: Rigged light explosion, last touched by [fingerprintslast].")
@@ -412,19 +423,20 @@
 			return
 
 	use_power = ACTIVE_POWER_USE
+	update_icon()
 	set_light(BR, PO, CO)
 	if(play_sound)
 		playsound(src, 'sound/machines/light_on.ogg', 60, TRUE)
 
 /obj/machinery/light/proc/burnout()
 	status = LIGHT_BURNED
-	icon_state = "[base_state]-burned"
 
 	visible_message("<span class='boldwarning'>[src] burns out!</span>")
 	do_sparks(2, 1, src)
 
 	on = FALSE
 	set_light(0)
+	update_icon()
 	check_for_sync()
 
 // attempt to set the light's on/off status
@@ -440,13 +452,14 @@
 	if(in_range(user, src))
 		switch(status)
 			if(LIGHT_OK)
-				. += "It is turned [on? "on" : "off"]."
+				. += "<span class='notice'>It is turned [on ? "on" : "off"].</span>"
 			if(LIGHT_EMPTY)
-				. += "The [fitting] has been removed."
+				. += "<span class='notice'>The [fitting] has been removed.</span>"
+				. += "<span class='notice'>The casing can be <b>unscrewed</b>.</span>"
 			if(LIGHT_BURNED)
-				. += "The [fitting] is burnt out."
+				. += "<span class='notice'>The [fitting] is burnt out.</span>"
 			if(LIGHT_BROKEN)
-				. += "The [fitting] has been smashed."
+				. += "<span class='notice'>The [fitting] has been smashed.</span>"
 
 // attack with item - insert light (if right type), otherwise try to break the light
 
@@ -512,13 +525,6 @@
 
 	// attempt to stick weapon into light socket
 	if(status == LIGHT_EMPTY)
-		if(istype(W, /obj/item/screwdriver)) //If it's a screwdriver open it.
-			playsound(loc, W.usesound, W.tool_volume, 1)
-			user.visible_message("<span class='notice'>[user] opens [src]'s casing.</span>", \
-				"<span class='notice'>You open [src]'s casing.</span>", "<span class='notice'>You hear a screwdriver.</span>")
-			deconstruct()
-			return
-
 		if(has_power() && (W.flags & CONDUCT))
 			do_sparks(3, 1, src)
 			if(prob(75)) // If electrocuted
@@ -529,6 +535,16 @@
 			return
 
 	return ..()
+
+/obj/machinery/light/screwdriver_act(mob/living/user, obj/item/I)
+	if(status != LIGHT_EMPTY)
+		return
+
+	I.play_tool_sound(src)
+	user.visible_message("<span class='notice'>[user] opens [src]'s casing.</span>", \
+		"<span class='notice'>You open [src]'s casing.</span>", "<span class='notice'>You hear a screwdriver.</span>")
+	deconstruct()
+	return TRUE
 
 /obj/machinery/light/deconstruct(disassembled = TRUE)
 	if(!(flags & NODECONSTRUCT))
@@ -606,16 +622,18 @@
 		return
 	if(fire_mode)
 		set_light(nightshift_light_range, nightshift_light_power, bulb_emergency_colour)
+		update_icon()
 		return
 	emergency_mode = TRUE
 	set_light(3, 1.7, bulb_emergency_colour)
-	RegisterSignal(current_area, COMSIG_AREA_POWER_CHANGE, .proc/update, override = TRUE)
+	update_icon()
+	RegisterSignal(current_area, COMSIG_AREA_POWER_CHANGE, PROC_REF(update), override = TRUE)
 	check_for_sync()
 
 /obj/machinery/light/proc/emergency_lights_off(area/current_area, obj/machinery/power/apc/current_apc)
 	set_light(0, 0, 0) //you, sir, are off!
 	if(current_apc)
-		RegisterSignal(current_area, COMSIG_AREA_POWER_CHANGE, .proc/update, override = TRUE)
+		RegisterSignal(current_area, COMSIG_AREA_POWER_CHANGE, PROC_REF(update), override = TRUE)
 
 /obj/machinery/light/flicker(amount = rand(20, 30))
 	if(flickering)
@@ -625,7 +643,7 @@
 		return FALSE
 
 	flickering = TRUE
-	INVOKE_ASYNC(src, /obj/machinery/light/.proc/flicker_event, amount)
+	INVOKE_ASYNC(src, TYPE_PROC_REF(/obj/machinery/light, flicker_event), amount)
 
 	return TRUE
 
@@ -636,7 +654,7 @@
 /obj/machinery/light/proc/flicker_event(amount)
 	if(on && status == LIGHT_OK)
 		for(var/i = 0; i < amount; i++)
-			if(status != LIGHT_OK)
+			if(status != LIGHT_OK || extinguished)
 				break
 			on = FALSE
 			update(FALSE, TRUE, FALSE)
@@ -644,7 +662,7 @@
 			on = (status == LIGHT_OK)
 			update(FALSE, TRUE, FALSE)
 			sleep(rand(1, 10))
-		on = (status == LIGHT_OK)
+		on = (status == LIGHT_OK && !extinguished)
 		update(FALSE, TRUE, FALSE)
 	flickering = FALSE
 
@@ -757,6 +775,7 @@
 	if(status == LIGHT_OK)
 		return
 	status = LIGHT_OK
+	extinguished = FALSE
 	on = TRUE
 	update(FALSE, TRUE, FALSE)
 	check_for_sync()
@@ -808,13 +827,14 @@
 	force = 2
 	throwforce = 5
 	w_class = WEIGHT_CLASS_TINY
+	blocks_emissive = FALSE
 	/// Light status (LIGHT_OK | LIGHT_BURNED | LIGHT_BROKEN)
 	var/status = LIGHT_OK
 	var/base_state
 	/// How many times has the light been switched on/off?
 	var/switchcount = 0
 	/// Materials the light is made of
-	materials = list(MAT_GLASS=100)
+	materials = list(MAT_GLASS = 200)
 	/// Is the light rigged to explode?
 	var/rigged = FALSE
 	/// Light range
@@ -835,7 +855,7 @@
 		status = data["status"]
 		..()
 
-/obj/item/light/ComponentInitialize()
+/obj/item/light/Initialize(mapload)
 	. = ..()
 	AddComponent(/datum/component/caltrop, force)
 
@@ -975,15 +995,17 @@
 
 /obj/machinery/light/extinguish_light()
 	on = FALSE
+	extinguished = TRUE
 	emergency_mode = FALSE
 	no_emergency = TRUE
-	addtimer(CALLBACK(src, .proc/enable_emergency_lighting), 5 MINUTES, TIMER_UNIQUE|TIMER_OVERRIDE)
+	addtimer(CALLBACK(src, PROC_REF(enable_emergency_lighting)), 5 MINUTES, TIMER_UNIQUE|TIMER_OVERRIDE)
 	visible_message("<span class='danger'>[src] flickers and falls dark.</span>")
 	update(FALSE)
 	check_for_sync()
 
 /obj/machinery/light/proc/enable_emergency_lighting()
 	visible_message("<span class='notice'>[src]'s emergency lighting flickers back to life.</span>")
+	extinguished = FALSE
 	no_emergency = FALSE
 	update(FALSE)
 	check_for_sync()

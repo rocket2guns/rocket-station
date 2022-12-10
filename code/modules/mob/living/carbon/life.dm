@@ -25,8 +25,7 @@
 
 	if(LAZYLEN(processing_patches))
 		handle_patches()
-	if(mind)
-		handle_changeling()
+
 	handle_wetness(times_fired)
 
 	// Increase germ_level regularly
@@ -45,7 +44,7 @@
 	if(times_fired % 2 == 1)
 		breathe() //Breathe every other tick, unless suffocating
 	else
-		if(istype(loc, /obj/))
+		if(isobj(loc))
 			var/obj/location_as_object = loc
 			location_as_object.handle_internal_lifeform(src, 0)
 
@@ -69,7 +68,7 @@
 	if(AmountLoseBreath())
 		if(prob(75))
 			emote("gasp")
-		if(istype(loc, /obj/))
+		if(isobj(loc))
 			var/obj/loc_as_obj = loc
 			loc_as_obj.handle_internal_lifeform(src, 0)
 	else
@@ -89,7 +88,7 @@
 
 				breath = loc.remove_air(breath_moles)
 		else //Breathe from loc as obj again
-			if(istype(loc, /obj/))
+			if(isobj(loc))
 				var/obj/loc_as_obj = loc
 				loc_as_obj.handle_internal_lifeform(src, 0)
 
@@ -98,6 +97,8 @@
 	if(breath)
 		loc.assume_air(breath)
 		air_update_turf()
+		if(ishuman(src) && !internal && environment.temperature < 273 && environment.return_pressure() > 20) //foggy breath :^)
+			new /obj/effect/frosty_breath(loc, src)
 
 //Third link in a breath chain, calls handle_breath_temperature()
 /mob/living/carbon/proc/check_breath(datum/gas_mixture/breath)
@@ -219,9 +220,6 @@
 
 //remember to remove the "proc" of the child procs of these.
 /mob/living/carbon/proc/handle_blood()
-	return
-
-/mob/living/carbon/proc/handle_changeling()
 	return
 
 /mob/living/carbon/handle_mutations_and_radiation()

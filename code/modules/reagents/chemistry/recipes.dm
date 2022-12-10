@@ -8,7 +8,7 @@
 
 	// Both of these variables are mostly going to be used with slime cores - but if you want to, you can use them for other things
 	var/atom/required_container = null // the container required for the reaction to happen
-	var/required_other = 0 // an integer required for the reaction to happen
+	var/required_other = FALSE // extra requirements for the reaction to happen
 
 	var/result_amount = 0
 	var/list/secondary_results = list()		//additional reagents produced by the reaction
@@ -79,7 +79,7 @@
 	var/moved_count = 0
 	// The ternary below isnt exactly needed, but it makes code more readable because `pull` is a bool
 	for(var/atom/movable/X in view(2 + (pull ? 1 : 0)  + (volume > 30 ? 1 : 0), T))
-		if(istype(X, /obj/effect))
+		if(iseffect(X))
 			continue  //stop pulling smoke and hotspots please
 		if(X && !X.anchored && X.move_resist <= MOVE_FORCE_DEFAULT)
 			if(pull)

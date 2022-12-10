@@ -432,7 +432,7 @@
 /obj/item/robot_module/janitor/Initialize(mapload)
 	. = ..()
 	var/mob/living/silicon/robot/R = loc
-	RegisterSignal(R, COMSIG_MOVABLE_MOVED, .proc/on_cyborg_move)
+	RegisterSignal(R, COMSIG_MOVABLE_MOVED, PROC_REF(on_cyborg_move))
 
 /**
  * Proc called after the janitor cyborg has moved, in order to clean atoms at it's new location.
@@ -461,7 +461,7 @@
 			I.clean_blood()
 		else if(ishuman(A))
 			var/mob/living/carbon/human/cleaned_human = A
-			if(!cleaned_human.lying)
+			if(!IS_HORIZONTAL(cleaned_human))
 				continue
 			cleaned_human.clean_blood()
 			to_chat(cleaned_human, "<span class='danger'>[src] cleans your face!</span>")
@@ -770,7 +770,7 @@
 
 /// Checks whether this item is a module of the robot it is located in.
 /obj/item/proc/is_robot_module()
-	if(!istype(loc, /mob/living/silicon/robot))
+	if(!isrobot(loc))
 		return FALSE
 
 	var/mob/living/silicon/robot/R = loc

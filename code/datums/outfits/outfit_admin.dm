@@ -120,7 +120,7 @@
 
 /datum/outfit/admin/syndicate/spy
 	name = "Syndicate Spy"
-	uniform = /obj/item/clothing/under/suit_jacket/really_black
+	uniform = /obj/item/clothing/under/suit/really_black
 	shoes = /obj/item/clothing/shoes/chameleon/noslip
 	uplink_uses = 40
 	id_access = "Syndicate Agent"
@@ -133,7 +133,7 @@
 /datum/outfit/admin/nt_vip
 	name = "VIP Guest"
 
-	uniform = /obj/item/clothing/under/suit_jacket/really_black
+	uniform = /obj/item/clothing/under/suit/really_black
 	back = /obj/item/storage/backpack/satchel
 	gloves = /obj/item/clothing/gloves/color/black
 	shoes = /obj/item/clothing/shoes/black
@@ -241,7 +241,7 @@
 	cybernetic_implants = list(
 		/obj/item/organ/internal/cyberimp/eyes/hud/security,
 		/obj/item/organ/internal/eyes/cybernetic/xray,
-		/obj/item/organ/internal/cyberimp/brain/anti_stun/hardened,
+		/obj/item/organ/internal/cyberimp/brain/anti_stam/hardened,
 		/obj/item/organ/internal/cyberimp/chest/nutriment/plus/hardened,
 		/obj/item/organ/internal/cyberimp/arm/combat/centcom
 	)
@@ -261,16 +261,65 @@
 		R.name = "radio headset"
 		R.icon_state = "headset"
 
-/datum/outfit/admin/death_commando
-	name = "NT Death Commando"
+/datum/outfit/admin/deathsquad_commando
+	name = "NT Deathsquad"
 
-/datum/outfit/admin/death_commando/equip(mob/living/carbon/human/H, visualsOnly = FALSE)
-	return H.equip_death_commando()
+	pda = /obj/item/pinpointer
+	box = /obj/item/storage/box/deathsquad
+	back = /obj/item/storage/backpack/ert/deathsquad
+	belt = /obj/item/gun/projectile/revolver/mateba
+	gloves = /obj/item/clothing/gloves/combat
+	uniform = /obj/item/clothing/under/rank/centcom/deathsquad
+	shoes = /obj/item/clothing/shoes/magboots/advance
+	suit = /obj/item/clothing/suit/space/deathsquad
+	suit_store = /obj/item/gun/energy/pulse
+	glasses = /obj/item/clothing/glasses/thermal
+	mask = /obj/item/clothing/mask/gas/sechailer/swat
+	head = /obj/item/clothing/head/helmet/space/deathsquad
+	l_pocket = /obj/item/tank/internals/emergency_oxygen/double
+	r_pocket = /obj/item/reagent_containers/hypospray/combat/nanites
+	l_ear = /obj/item/radio/headset/alt/deathsquad
+	id = /obj/item/card/id/ert/deathsquad
+
+	backpack_contents = list(
+		/obj/item/storage/box/flashbangs,
+		/obj/item/ammo_box/a357,
+		/obj/item/flashlight/seclite,
+		/obj/item/grenade/plastic/c4/x4,
+		/obj/item/melee/energy/sword/saber,
+		/obj/item/shield/energy
+	)
+
+	implants = list(
+		/obj/item/implant/mindshield, // No death alarm, Deathsquad are silent
+		/obj/item/implant/dust
+	)
+
+/datum/outfit/admin/deathsquad_commando/leader
+	name = "NT Deathsquad Leader"
+	backpack_contents = list(
+		/obj/item/storage/box/flashbangs,
+		/obj/item/ammo_box/a357,
+		/obj/item/flashlight/seclite,
+		/obj/item/melee/energy/sword/saber,
+		/obj/item/shield/energy,
+		/obj/item/disk/nuclear/unrestricted
+	)
+
+/datum/outfit/admin/deathsquad_commando/post_equip(mob/living/carbon/human/H, visualsOnly = FALSE)
+	. = ..()
+	if(visualsOnly)
+		return
+
+	var/obj/item/card/id/I = H.wear_id
+	if(istype(I))
+		apply_to_card(I, H, get_centcom_access("Deathsquad Commando"), "Deathsquad")
+	H.sec_hud_set_ID()
 
 /datum/outfit/admin/pirate
 	name = "Space Pirate"
 
-	uniform = /obj/item/clothing/under/pirate
+	uniform = /obj/item/clothing/under/costume/pirate
 	back = /obj/item/storage/backpack/satchel
 	belt = /obj/item/storage/belt/utility/full/multitool
 	gloves = /obj/item/clothing/gloves/combat
@@ -337,7 +386,7 @@
 /datum/outfit/admin/tunnel_clown
 	name = "Tunnel Clown"
 
-	uniform = /obj/item/clothing/under/rank/clown
+	uniform = /obj/item/clothing/under/rank/civilian/clown
 	suit = /obj/item/clothing/suit/hooded/chaplain_hoodie
 	back = /obj/item/storage/backpack
 	belt = /obj/item/storage/belt/utility/full/multitool
@@ -372,7 +421,7 @@
 /datum/outfit/admin/mime_assassin
 	name = "Mime Assassin"
 
-	uniform = /obj/item/clothing/under/mime
+	uniform = /obj/item/clothing/under/rank/civilian/mime
 	suit = /obj/item/clothing/suit/suspenders
 	back = /obj/item/storage/backpack/mime
 	belt = /obj/item/storage/belt/utility/full/multitool
@@ -400,7 +449,7 @@
 /datum/outfit/admin/mime_assassin/pre_equip(mob/living/carbon/human/H, visualsOnly = FALSE)
 	. = ..()
 	if(H.gender == FEMALE)
-		uniform = /obj/item/clothing/under/sexymime
+		uniform = /obj/item/clothing/under/rank/civilian/mime/sexy
 		suit = /obj/item/clothing/mask/gas/sexymime
 
 /datum/outfit/admin/mime_assassin/post_equip(mob/living/carbon/human/H, visualsOnly = FALSE)
@@ -498,7 +547,7 @@
 /datum/outfit/admin/musician
 	name = "Musician"
 
-	uniform = /obj/item/clothing/under/singerb
+	uniform = /obj/item/clothing/under/costume/singerb
 	back = /obj/item/storage/backpack
 	shoes = /obj/item/clothing/shoes/singerb
 	gloves = /obj/item/clothing/gloves/color/white
@@ -535,7 +584,7 @@
 /datum/outfit/admin/soviet
 	name = "Soviet Generic"
 	gloves = /obj/item/clothing/gloves/combat
-	uniform = /obj/item/clothing/under/soviet
+	uniform = /obj/item/clothing/under/costume/soviet
 	back = /obj/item/storage/backpack/satchel
 	head = /obj/item/clothing/head/ushanka
 	id = /obj/item/card/id
@@ -725,7 +774,7 @@
 	cybernetic_implants = list(
 		/obj/item/organ/internal/cyberimp/eyes/hud/security,
 		/obj/item/organ/internal/cyberimp/chest/nutriment/hardened,
-		/obj/item/organ/internal/cyberimp/brain/anti_stun/hardened,
+		/obj/item/organ/internal/cyberimp/brain/anti_stam/hardened,
 		/obj/item/organ/internal/cyberimp/arm/flash,
 		/obj/item/organ/internal/eyes/cybernetic/shield
 	)
@@ -753,7 +802,7 @@
 /datum/outfit/admin/sol_trader
 	name = "Sol Trader"
 
-	uniform = /obj/item/clothing/under/rank/cargotech
+	uniform = /obj/item/clothing/under/rank/cargo/tech
 	back = /obj/item/storage/backpack/industrial
 	belt = /obj/item/melee/classic_baton
 	head = /obj/item/clothing/head/soft
@@ -900,7 +949,7 @@
 /datum/outfit/admin/tournament_gangster //gangster are supposed to fight each other. --rastaf0
 	name = "Tournament Gangster"
 
-	uniform = /obj/item/clothing/under/det
+	uniform = /obj/item/clothing/under/rank/security/detective
 	suit = /obj/item/clothing/suit/storage/det_suit
 	shoes = /obj/item/clothing/shoes/black
 	head = /obj/item/clothing/head/det_hat
@@ -911,7 +960,7 @@
 /datum/outfit/admin/tournament_chef //Steven Seagal FTW
 	name = "Tournament Chef"
 
-	uniform = /obj/item/clothing/under/rank/chef
+	uniform = /obj/item/clothing/under/rank/civilian/chef
 	suit = /obj/item/clothing/suit/chef
 	shoes = /obj/item/clothing/shoes/black
 	head = /obj/item/clothing/head/chefhat
@@ -923,7 +972,7 @@
 /datum/outfit/admin/tournament_janitor
 	name = "Tournament Janitor"
 
-	uniform = /obj/item/clothing/under/rank/janitor
+	uniform = /obj/item/clothing/under/rank/civilian/janitor
 	back = /obj/item/storage/backpack
 	shoes = /obj/item/clothing/shoes/black
 	l_hand = /obj/item/reagent_containers/glass/bucket
@@ -944,7 +993,7 @@
 /datum/outfit/admin/survivor
 	name = "Survivor"
 
-	uniform = /obj/item/clothing/under/overalls
+	uniform = /obj/item/clothing/under/misc/overalls
 	back = /obj/item/storage/backpack
 	gloves = /obj/item/clothing/gloves/color/latex
 	shoes = /obj/item/clothing/shoes/white
@@ -971,7 +1020,7 @@
 /datum/outfit/admin/masked_killer
 	name = "Masked Killer"
 
-	uniform = /obj/item/clothing/under/overalls
+	uniform = /obj/item/clothing/under/misc/overalls
 	suit = /obj/item/clothing/suit/apron
 	back = /obj/item/storage/backpack
 	gloves = /obj/item/clothing/gloves/color/latex
@@ -1066,7 +1115,7 @@
 /datum/outfit/admin/ancient_vampire
 	name = "Ancient Vampire"
 
-	uniform = /obj/item/clothing/under/victsuit/red
+	uniform = /obj/item/clothing/under/suit/victsuit/red
 	suit = /obj/item/clothing/suit/draculacoat
 	back = /obj/item/storage/backpack
 	gloves = /obj/item/clothing/gloves/combat
@@ -1214,7 +1263,7 @@
 /datum/outfit/admin/honksquad
 	name = "Honksquad"
 
-	uniform = /obj/item/clothing/under/rank/clown
+	uniform = /obj/item/clothing/under/rank/civilian/clown
 	mask = /obj/item/clothing/mask/gas/clown_hat
 	back = /obj/item/storage/backpack/clown
 	id = /obj/item/card/id/clown
@@ -1237,7 +1286,7 @@
 /datum/outfit/admin/honksquad/pre_equip(mob/living/carbon/human/H, visualsOnly = FALSE)
 	. = ..()
 	if(H.gender == FEMALE)
-		uniform = /obj/item/clothing/under/rank/clown/sexy
+		uniform = /obj/item/clothing/under/rank/civilian/clown/sexy
 		mask = /obj/item/clothing/mask/gas/clown_hat/sexy
 
 	if(prob(50))

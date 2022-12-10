@@ -198,7 +198,7 @@
 				return
 			var/datum/data/record/G = new /datum/data/record()
 			G.fields["name"] = "New Record"
-			G.fields["id"] = "[add_zero(num2hex(rand(1, 1.6777215E7)), 6)]"
+			G.fields["id"] = "[num2hex(rand(1, 1.6777215E7), 6)]"
 			G.fields["rank"] = "Unassigned"
 			G.fields["real_rank"] = "Unassigned"
 			G.fields["sex"] = "Male"
@@ -274,7 +274,7 @@
 				return
 			is_printing = TRUE
 			playsound(loc, 'sound/goonstation/machines/printer_dotmatrix.ogg', 50, TRUE)
-			addtimer(CALLBACK(src, .proc/print_record_finish), 5 SECONDS)
+			addtimer(CALLBACK(src, PROC_REF(print_record_finish)), 5 SECONDS)
 		else
 			return FALSE
 
@@ -387,7 +387,7 @@
 						return
 					is_printing = TRUE
 					playsound(loc, 'sound/goonstation/machines/printer_dotmatrix.ogg', 50, TRUE)
-					addtimer(CALLBACK(src, .proc/print_cell_log_finish, T.name, T.info), 5 SECONDS)
+					addtimer(CALLBACK(src, PROC_REF(print_cell_log_finish), T.name, T.info), 5 SECONDS)
 				else
 					return FALSE
 		else

@@ -16,7 +16,7 @@
 	. = TRUE
 	if(isliving(mover) && mover == target)
 		var/mob/living/M = mover
-		if(M.lying || !prob(trip_chance))
+		if(!(M.mobility_flags & MOBILITY_MOVE) || !prob(trip_chance))
 			return
 		M.Weaken(weaken)
 		on_crossed()
@@ -48,7 +48,7 @@
 /obj/effect/hallucination/chaser/Initialize(mapload, mob/living/carbon/target)
 	. = ..()
 	name = "\proper monkey ([rand(100, 999)])"
-	think_timer = addtimer(CALLBACK(src, .proc/think), think_interval, TIMER_LOOP | TIMER_STOPPABLE)
+	think_timer = addtimer(CALLBACK(src, PROC_REF(think)), think_interval, TIMER_LOOP | TIMER_STOPPABLE)
 
 /obj/effect/hallucination/chaser/Destroy()
 	deltimer(think_timer)

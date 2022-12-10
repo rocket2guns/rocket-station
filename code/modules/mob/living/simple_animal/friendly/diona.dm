@@ -35,7 +35,7 @@
 	attack_sound = 'sound/weapons/bite.ogg'
 
 	speed = 0
-	stop_automated_movement = 0
+	stop_automated_movement = FALSE
 	turns_per_move = 4
 
 	var/list/donors = list()
@@ -156,7 +156,7 @@
 
 	var/hasMobs = FALSE
 	for(var/atom/A in D.contents)
-		if(istype(A, /mob/) || istype(A, /obj/item/holder))
+		if(ismob(A) || istype(A, /obj/item/holder))
 			hasMobs = TRUE
 	if(!hasMobs)
 		D.status_flags &= ~PASSEMOTES
@@ -260,7 +260,7 @@
 	if(donors.len == evolve_donors)
 		to_chat(src, "<span class='noticealien'>You feel ready to move on to your next stage of growth.</span>")
 	else if(donors.len == awareness_donors)
-		universal_understand = 1
+		universal_understand = TRUE
 		to_chat(src, "<span class='noticealien'>You feel your awareness expand, and realize you know how to understand the creatures around you.</span>")
 	else
 		to_chat(src, "<span class='noticealien'>The blood seeps into your small form, and you draw out the echoes of memories and personality from it, working them into your budding mind.</span>")

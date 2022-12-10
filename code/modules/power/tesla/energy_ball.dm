@@ -35,9 +35,9 @@
 
 /obj/singularity/energy_ball/Initialize(mapload, starting_energy = 50, is_miniball = FALSE)
 	miniball = is_miniball
-	RegisterSignal(src, COMSIG_ATOM_ORBIT_BEGIN, .proc/on_start_orbit)
-	RegisterSignal(src, COMSIG_ATOM_ORBIT_STOP, .proc/on_stop_orbit)
-	RegisterSignal(parent_energy_ball, COMSIG_PARENT_QDELETING, .proc/on_parent_delete)
+	RegisterSignal(src, COMSIG_ATOM_ORBIT_BEGIN, PROC_REF(on_start_orbit))
+	RegisterSignal(src, COMSIG_ATOM_ORBIT_STOP, PROC_REF(on_stop_orbit))
+	RegisterSignal(parent_energy_ball, COMSIG_PARENT_QDELETING, PROC_REF(on_parent_delete))
 	. = ..()
 	if(!is_miniball)
 		set_light(10, 7, "#5e5edd")
@@ -126,7 +126,7 @@
 		energy_to_raise = energy_to_raise * 1.25
 
 		playsound(src.loc, 'sound/magic/lightning_chargeup.ogg', 100, TRUE, extrarange = 30, channel = CHANNEL_ENGINE)
-		addtimer(CALLBACK(src, .proc/new_mini_ball), 100)
+		addtimer(CALLBACK(src, PROC_REF(new_mini_ball)), 100)
 
 	else if(energy < energy_to_lower && length(orbiting_balls))
 		energy_to_raise = energy_to_raise / 1.25
@@ -136,7 +136,7 @@
 		qdel(Orchiectomy_target)
 
 	else if(length(orbiting_balls))
-		dissipate() //sing code has a much better system.
+		do_dissipate() //sing code has a much better system.
 
 /obj/singularity/energy_ball/proc/new_mini_ball()
 	if(!loc)
@@ -223,7 +223,7 @@
 	var/closest_type = 0
 	var/static/things_to_shock = typecacheof(list(/obj/machinery, /mob/living, /obj/structure, /obj/vehicle))
 	var/static/blacklisted_tesla_types = typecacheof(list(/obj/machinery/atmospherics,
-										/obj/machinery/portable_atmospherics,
+										/obj/machinery/atmospherics/portable,
 										/obj/machinery/power/emitter,
 										/obj/machinery/field/generator,
 										/mob/living/simple_animal/slime,
@@ -334,7 +334,7 @@
 	if(closest_type == LIVING)
 		var/mob/living/closest_mob = closest_atom
 		closest_mob.set_shocked()
-		addtimer(CALLBACK(closest_mob, /mob/living/proc/reset_shocked), 10)
+		addtimer(CALLBACK(closest_mob, TYPE_PROC_REF(/mob/living, reset_shocked)), 10)
 		var/shock_damage = (zap_flags & ZAP_MOB_DAMAGE) ? (min(round(power / 600), 90) + rand(-5, 5)) : 0
 		closest_mob.electrocute_act(shock_damage, source, 1, SHOCK_TESLA | ((zap_flags & ZAP_MOB_STUN) ? NONE : SHOCK_NOSTUN))
 		if(issilicon(closest_mob))

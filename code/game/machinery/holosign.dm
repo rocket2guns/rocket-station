@@ -5,8 +5,8 @@
 	icon = 'icons/obj/holosign.dmi'
 	icon_state = "sign_off"
 	layer = 4
-	anchored = 1
-	var/lit = 0
+	anchored = TRUE
+	var/lit = FALSE
 	var/id = null
 	var/on_icon = "sign_on"
 
@@ -25,10 +25,10 @@
 	if(stat & (BROKEN|NOPOWER))
 		return
 	lit = !lit
-	update_icon()
+	update_icon(UPDATE_ICON_STATE)
 	check_for_sync()
 
-/obj/machinery/holosign/update_icon()
+/obj/machinery/holosign/update_icon_state()
 	if(!lit)
 		icon_state = "sign_off"
 	else
@@ -36,8 +36,8 @@
 
 /obj/machinery/holosign/power_change()
 	if(stat & NOPOWER)
-		lit = 0
-	update_icon()
+		lit = FALSE
+	update_icon(UPDATE_ICON_STATE)
 	check_for_sync()
 
 /obj/machinery/holosign/surgery
@@ -52,8 +52,8 @@
 	icon_state = "light0"
 	desc = "A remote control switch for holosign."
 	var/id = null
-	var/active = 0
-	anchored = 1.0
+	var/active = FALSE
+	anchored = TRUE
 	use_power = IDLE_POWER_USE
 	idle_power_usage = 2
 	active_power_usage = 4

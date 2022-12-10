@@ -4,7 +4,7 @@
 	singlemutcheck(H, GLOB.monkeyblock, MUTCHK_FORCED)
 
 /mob/new_player/AIize()
-	spawning = 1
+	spawning = TRUE
 	return ..()
 
 /mob/living/carbon/AIize()
@@ -12,8 +12,7 @@
 		return
 	for(var/obj/item/W in src)
 		unEquip(W)
-	notransform = 1
-	canmove = 0
+	notransform = TRUE
 	icon = null
 	invisibility = 101
 	return ..()
@@ -36,9 +35,9 @@
 
 	O.add_ai_verbs()
 
-	O.rename_self("AI",1)
+	O.rename_self("AI", TRUE)
 
-	INVOKE_ASYNC(GLOBAL_PROC, .proc/qdel, src) // To prevent the proc from returning null.
+	INVOKE_ASYNC(GLOBAL_PROC, GLOBAL_PROC_REF(qdel), src) // To prevent the proc from returning null. Todo: Convert to QDEL_IN
 	return O
 
 
@@ -57,8 +56,7 @@
 	for(var/obj/item/W in src)
 		unEquip(W)
 
-	notransform = 1
-	canmove = 0
+	notransform = TRUE
 	icon = null
 	invisibility = 101
 
@@ -109,9 +107,10 @@
 
 	O.update_pipe_vision()
 
+	O.check_custom_sprite()
 	O.Namepick()
 
-	INVOKE_ASYNC(GLOBAL_PROC, .proc/qdel, src) // To prevent the proc from returning null.
+	INVOKE_ASYNC(GLOBAL_PROC, GLOBAL_PROC_REF(qdel), src) // To prevent the proc from returning null. Todo: Convert to QDEL_IN
 	return O
 
 //human -> alien
@@ -121,8 +120,7 @@
 	for(var/obj/item/W in src)
 		unEquip(W)
 	regenerate_icons()
-	notransform = 1
-	canmove = 0
+	notransform = TRUE
 	icon = null
 	invisibility = 101
 	for(var/t in bodyparts)
@@ -149,7 +147,6 @@
 	if(notransform)
 		return
 	notransform = TRUE
-	canmove = FALSE
 	for(var/obj/item/I in src)
 		unEquip(I)
 	regenerate_icons()
@@ -184,8 +181,7 @@
 	for(var/obj/item/W in src)
 		unEquip(W)
 	regenerate_icons()
-	notransform = 1
-	canmove = 0
+	notransform = TRUE
 	icon = null
 	invisibility = 101
 	for(var/t in bodyparts)	//this really should not be necessary
@@ -209,8 +205,7 @@
 		unEquip(W)
 
 	regenerate_icons()
-	notransform = 1
-	canmove = 0
+	notransform = TRUE
 	icon = null
 	invisibility = 101
 
@@ -248,8 +243,7 @@
 	for(var/obj/item/W in src)
 		unEquip(W)
 	regenerate_icons()
-	notransform = 1
-	canmove = 0
+	notransform = TRUE
 	icon = null
 	invisibility = 101
 	for(var/t in bodyparts)	//this really should not be necessary

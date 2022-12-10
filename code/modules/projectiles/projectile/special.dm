@@ -7,18 +7,17 @@
 	nodamage = 1
 	impact_effect_type = /obj/effect/temp_visual/impact_effect/ion
 	flag = "energy"
+	var/strong_emp = 1
+	var/weak_emp = 1
 
 /obj/item/projectile/ion/on_hit(atom/target, blocked = 0)
 	..()
-	empulse(target, 1, 1, 1, cause = "[type] fired by [key_name(firer)]")
+	empulse(target, strong_emp, weak_emp, TRUE, cause = "[type] fired by [key_name(firer)]")
 	return 1
 
 /obj/item/projectile/ion/weak
-
-/obj/item/projectile/ion/weak/on_hit(atom/target, blocked = 0)
-	..()
-	empulse(target, 0, 0, 1, cause = "[type] fired by [key_name(firer)]")
-	return 1
+	strong_emp = 0
+	weak_emp = 0
 
 /obj/item/projectile/bullet/gyro
 	name ="explosive bolt"
@@ -194,7 +193,6 @@
 /obj/item/projectile/bullet/frag12
 	name ="explosive slug"
 	damage = 15
-	weaken = 2 SECONDS
 	alwayslog = TRUE
 
 /obj/item/projectile/bullet/frag12/on_hit(atom/target, blocked = 0)
@@ -211,6 +209,13 @@
 	dismemberment = 20
 	sharp = TRUE
 	impact_effect_type = /obj/effect/temp_visual/impact_effect/purple_laser
+
+/obj/item/projectile/plasma/prehit(atom/target)
+	. = ..()
+	if(!lavaland_equipment_pressure_check(get_turf(target)))
+		name = "weakened [name]"
+		dismemberment = 0
+		sharp = FALSE
 
 /obj/item/projectile/plasma/on_hit(atom/target)
 	. = ..()
@@ -259,7 +264,7 @@
 
 /obj/item/projectile/snowball/on_hit(atom/target)	//chilling
 	. = ..()
-	if(istype(target, /mob/living))
+	if(isliving(target))
 		var/mob/living/M = target
 		M.bodytemperature = max(0, M.bodytemperature - 50)	//each hit will drop your body temp, so don't get surrounded!
 		M.ExtinguishMob()	//bright side, they counter being on fire!
@@ -277,7 +282,7 @@
 
 /obj/item/projectile/ornament/on_hit(atom/target)	//knockback
 	..()
-	if(istype(target, /turf))
+	if(isturf(target))
 		return 0
 	var/obj/T = target
 	var/throwdir = get_dir(firer,target)

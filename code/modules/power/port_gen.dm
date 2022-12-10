@@ -6,25 +6,21 @@
 	desc = "A portable generator for emergency backup power"
 	icon = 'icons/obj/power.dmi'
 	icon_state = "portgen0_0"
-	density = 1
-	anchored = 0
+	density = TRUE
+	anchored = FALSE
 	use_power = NO_POWER_USE
 
-	var/active = 0
+	var/active = FALSE
 	var/power_gen = 5000
-	var/open = 0
-	var/recent_fault = 0
 	var/power_output = 1
 	var/base_icon = "portgen0"
 
 	serialize()
 		var/list/data = ..()
-		data["open"] = open
 		data["active"] = active
 		return data
 
 	deserialize(list/data)
-		open = data["open"]
 		active = data["active"]
 		..()
 
@@ -43,7 +39,7 @@
 /obj/machinery/power/port_gen/proc/handleInactive()
 	return
 
-/obj/machinery/power/port_gen/update_icon()
+/obj/machinery/power/port_gen/update_icon_state()
 	icon_state = "[base_icon]_[active]"
 
 /obj/machinery/power/port_gen/process()
@@ -51,9 +47,9 @@
 		add_avail(power_gen * power_output)
 		UseFuel()
 	else
-		if(active == 1)
+		if(active == TRUE)
 			check_for_sync()
-		active = 0
+		active = FALSE
 		handleInactive()
 		update_icon()
 
@@ -141,13 +137,11 @@
 		temperature = data["temperature"]
 		..()
 
-/obj/machinery/power/port_gen/pacman/Initialize()
-	..()
+/obj/machinery/power/port_gen/pacman/Initialize(mapload)
+	. = ..()
 	if(anchored)
 		connect_to_network()
 
-/obj/machinery/power/port_gen/pacman/New()
-	..()
 	component_parts = list()
 	component_parts += new /obj/item/stock_parts/matter_bin(null)
 	component_parts += new /obj/item/stock_parts/micro_laser(null)
@@ -157,8 +151,8 @@
 	component_parts += new board_path(null)
 	RefreshParts()
 
-/obj/machinery/power/port_gen/pacman/upgraded/New()
-	..()
+/obj/machinery/power/port_gen/pacman/upgraded/Initialize(mapload)
+	. = ..()
 	component_parts = list()
 	component_parts += new /obj/item/stock_parts/matter_bin/super(null)
 	component_parts += new /obj/item/stock_parts/micro_laser/ultra(null)
@@ -301,7 +295,7 @@
 		explode() //if they're foolish enough to emag while it's running
 
 	if(!emagged)
-		emagged = 1
+		emagged = TRUE
 		return 1
 
 /obj/machinery/power/port_gen/pacman/attackby(obj/item/O as obj, mob/user as mob)
@@ -331,14 +325,7 @@
 			anchored = !anchored
 			check_for_sync()
 
-		else if(istype(O, /obj/item/screwdriver))
-			panel_open = !panel_open
-			playsound(src.loc, O.usesound, 50, 1)
 			check_for_sync()
-			if(panel_open)
-				to_chat(user, "<span class='notice'>You open the access panel.</span>")
-			else
-				to_chat(user, "<span class='notice'>You close the access panel.</span>")
 		else if(istype(O, /obj/item/storage/part_replacer) && panel_open)
 			exchange_parts(user, O)
 			return
@@ -346,6 +333,18 @@
 			default_deconstruction_crowbar(user, O)
 	else
 		return ..()
+
+/obj/machinery/power/port_gen/pacman/screwdriver_act(mob/living/user, obj/item/I)
+	if(active)
+		return
+
+	panel_open = !panel_open
+	I.play_tool_sound(src)
+	if(panel_open)
+		to_chat(user, "<span class='notice'>You open the access panel.</span>")
+	else
+		to_chat(user, "<span class='notice'>You close the access panel.</span>")
+	return TRUE
 
 /obj/machinery/power/port_gen/pacman/attack_hand(mob/user as mob)
 	..()
@@ -368,9 +367,9 @@
 	var/list/data = list()
 
 	data["active"] = active
-	if(istype(user, /mob/living/silicon/ai))
+	if(isAI(user))
 		data["is_ai"] = TRUE
-	else if(istype(user, /mob/living/silicon/robot) && !Adjacent(user))
+	else if(isrobot(user) && !Adjacent(user))
 		data["is_ai"] = TRUE
 	else
 		data["is_ai"] = FALSE
@@ -423,8 +422,8 @@
 	time_per_sheet = 576 //same power output, but a 50 sheet stack will last 2 hours at max safe power
 	board_path = /obj/item/circuitboard/pacman/super
 
-/obj/machinery/power/port_gen/pacman/super/upgraded/New()
-	..()
+/obj/machinery/power/port_gen/pacman/super/upgraded/Initialize(mapload)
+	. = ..()
 	component_parts = list()
 	component_parts += new /obj/item/stock_parts/matter_bin/super(null)
 	component_parts += new /obj/item/stock_parts/micro_laser/ultra(null)
@@ -464,8 +463,8 @@
 	temperature_gain = 90
 	board_path = /obj/item/circuitboard/pacman/mrs
 
-/obj/machinery/power/port_gen/pacman/mrs/upgraded/New()
-	..()
+/obj/machinery/power/port_gen/pacman/mrs/upgraded/Initialize(mapload)
+	. = ..()
 	component_parts = list()
 	component_parts += new /obj/item/stock_parts/matter_bin/super(null)
 	component_parts += new /obj/item/stock_parts/micro_laser/ultra(null)
